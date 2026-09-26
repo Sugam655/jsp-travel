@@ -1,0 +1,11 @@
+{
+    "name": "Bookings",
+    "alias": "bookings",
+    "description": "Booking and reservation management for tours, hotels and vehicle rentals.",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Bookings\\Providers\\BookingServiceProvider"
+    ],
+    "files": []
+}

@@ -1,0 +1,6 @@
+/* Hide the AdminLTE navbar notification badge when there are no unread
+   notifications. The widget leaves an empty pill behind, which would
+   otherwise look like a stale "0" next to the bell. */
+.navbar-badge:empty {
+    display: none !important;
+}
