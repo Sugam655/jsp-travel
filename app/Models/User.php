@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Modules\Bookings\Models\Booking;
 use Modules\Bookings\Models\Payment;
 
 #[Fillable(['name', 'email', 'password', 'is_admin', 'phone', 'address', 'city', 'country', 'emergency_contact', 'date_of_birth', 'profile_photo'])]
@@ -41,6 +42,14 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return (bool) $this->is_admin;
+    }
+
+    /**
+     * The bookings this customer has requested.
+     */
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class)->latest();
     }
 
     /**

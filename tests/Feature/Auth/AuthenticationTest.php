@@ -17,7 +17,7 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect('/my-account');
+    $response->assertRedirect('/user/dashboard');
 });
 
 test('administrators authenticate on the login screen', function () {
@@ -54,18 +54,26 @@ test('users can logout', function () {
 test('an authenticated customer who opens /login or /register is sent to their dashboard, never the admin area', function () {
     $customer = User::factory()->create(['is_admin' => false]);
 
-    $this->actingAs($customer)->get('/login')->assertRedirect('/my-account');
-    $this->actingAs($customer)->get('/register')->assertRedirect('/my-account');
-    $this->actingAs($customer)->get('/my-account')->assertOk();
+    $this->actingAs($customer)->get('/login')->assertRedirect('/user/dashboard');
+    $this->actingAs($customer)->get('/register')->assertRedirect('/user/dashboard');
+    $this->actingAs($customer)->get('/user/dashboard')->assertOk();
 
-    $this->actingAs($customer)->get('/dashboard')->assertForbidden();
+    $this->actingAs($customer)->get('/admin/dashboard')->assertForbidden();
 });
 
 test('an authenticated administrator who opens /login is sent to the admin dashboard', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 
-    $this->actingAs($admin)->get('/login')->assertRedirect('/dashboard');
-    $this->actingAs($admin)->get('/dashboard')->assertOk();
+    $this->actingAs($admin)->get('/login')->assertRedirect('/admin/dashboard');
+    $this->actingAs($admin)->get('/admin/dashboard')->assertOk();
+});
+
+test('the AdminLTE sidebar dashboard item points at the canonical admin dashboard', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertSee('href="'.route('admin.dashboard').'"', false);
 });
 
 test('an administrator logging in lands directly on the main admin dashboard, not a booking section', function () {

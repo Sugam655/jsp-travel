@@ -48,6 +48,57 @@
                                 </div>
                             </div>
                         </div>
+
+                        <hr>
+
+                        <div class="form-group">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" name="discount_enabled"
+                                    id="discount_enabled" value="1"
+                                    {{ old('discount_enabled', (bool) $current['discount_enabled']) ? 'checked' : '' }}>
+                                <label class="custom-control-label" for="discount_enabled">
+                                    Apply a discount to new bookings
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Taken off the subtotal before tax and service charge. Bookings that already
+                                exist keep the discount they were quoted with.
+                            </small>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="discount_type">Discount Type</label>
+                                    <select id="discount_type" name="discount_type"
+                                        class="form-select @error('discount_type') is-invalid @enderror">
+                                        @foreach ($discountTypes as $type => $typeLabel)
+                                            <option value="{{ $type }}"
+                                                @selected(old('discount_type', $current['discount_type']) === $type)>{{ $typeLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('discount_type')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="discount_value">Discount Value</label>
+                                    <input type="number" step="0.01" min="0" id="discount_value" name="discount_value"
+                                        class="form-control @error('discount_value') is-invalid @enderror"
+                                        value="{{ old('discount_value', $current['discount_value']) }}">
+                                    @error('discount_value')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="discount_label">Discount Label <span class="text-muted font-weight-normal">(optional)</span></label>
+                                    <input type="text" id="discount_label" name="discount_label" maxlength="60"
+                                        class="form-control @error('discount_label') is-invalid @enderror"
+                                        value="{{ old('discount_label', $current['discount_label']) }}">
+                                    @error('discount_label')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

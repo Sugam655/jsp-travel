@@ -657,22 +657,49 @@ test('the bell and the view-all footer point to the notification list, not the d
 
     $footer = url('/notifications').'" class="dropdown-item dropdown-footer';
     $listUrl = url('/notifications').'"';
-
-    $this->actingAs($user)
-        ->get('/notifications')
-        ->assertOk()
-        ->assertSee($footer, false);
-
-    $this->actingAs($admin)
-        ->get('/admin/bookings/payments')
-        ->assertOk()
-        ->assertSee($footer, false);
-
-    $bellWrap = $this->actingAs($user)->get('/notifications')->getContent();
     $dataAnchor = 'href="'.url('/notifications/data').'"';
 
-    expect($bellWrap)->toContain($listUrl)
-        ->and(strpos($bellWrap, $dataAnchor))->toBeFalse();
+    // Administrators keep the AdminLTE navbar bell, and its footer link points
+    // at the list rather than the polling data feed.
+    $adminPage = $this->actingAs($admin)->get('/admin/bookings/payments');
+    $adminPage->assertOk()->assertSee($footer, false);
+
+    $adminNotifications = $this->actingAs($admin)->get('/notifications');
+    $adminNotifications->assertOk()
+        ->assertSee('id="adminlte-sidebar-menu"', false);
+
+    expect($adminPage->getContent())->toContain($listUrl)
+        ->and(strpos($adminPage->getContent(), $dataAnchor))->toBeFalse()
+        ->and(strpos($adminNotifications->getContent(), $dataAnchor))->toBeFalse();
+
+    // Customers share the same AdminLTE notification centre, which links to the
+    // same list and never to the data feed. The role-specific sidebar is covered
+    // by its own test below, because AdminLTE compiles the menu once per request
+    // in the container, so a role can only be asserted on the first render.
+    $customerPage = $this->actingAs($user)->get('/notifications');
+    $customerPage->assertOk()
+        ->assertSee($listUrl, false);
+
+    expect(strpos($customerPage->getContent(), $dataAnchor))->toBeFalse();
+});
+
+test('a customer sees the narrowed customer sidebar in the notification centre', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/notifications')
+        ->assertOk()
+        ->assertSee('id="adminlte-sidebar-menu"', false)
+        ->assertSee('href="'.route('user.dashboard').'"', false)
+        ->assertDontSee(route('admin.dashboard'), false);
+});
+
+test('a customer can reach the notification centre from the customer sidebar', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/user/dashboard')
+        ->assertOk()
+        ->assertSee('href="'.route('notifications.index').'"', false);
 });
 
 test('an admin can open the change requests inbox and see the pending request', function () {

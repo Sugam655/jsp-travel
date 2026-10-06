@@ -47,4 +47,25 @@ class BookingNotification extends Notification
             'reference' => $this->payload['booking_reference'] ?? null,
         ];
     }
+
+    /**
+     * The Font Awesome icon a notification is listed under.
+     *
+     * The notification centre and the AdminLTE navbar dropdown both read the icon
+     * from here, so a booking always looks like a booking and the two views can
+     * never drift apart. Anything unrecognised falls back to the generic bell.
+     *
+     * @param  array<string, mixed>|null  $data  the stored notification data
+     */
+    public static function iconFor(?array $data): string
+    {
+        $payload = is_array($data['payload'] ?? null) ? $data['payload'] : [];
+
+        return match ($payload['type'] ?? 'booking') {
+            'payment' => 'fa-credit-card',
+            'change_request' => 'fa-arrows-rotate',
+            'booking' => 'fa-calendar-check',
+            default => 'fa-bell',
+        };
+    }
 }

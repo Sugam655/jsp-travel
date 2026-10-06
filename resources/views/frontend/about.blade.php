@@ -36,7 +36,7 @@
                            mb-0">
 
                             <li>
-                                <a href="index.html" class="text-white text-decoration-none">
+                                <a href="{{ route('home') }}" class="text-white text-decoration-none">
                                     Home
                                 </a>
                             </li>
@@ -104,7 +104,7 @@
                                     <p>Founder & CEO, Wanderlust Travels</p>
                                 </div>
                             </div>
-                            <a href="destinations.html" class="trvl">Explore More</a>
+                            <a href="{{ route('destinations.index') }}" class="trvl">Explore More</a>
                         </div>
                     </div>
                 </div>
@@ -161,7 +161,7 @@
                 <p class="trvl-banner-desc">Let us handle the details while you focus on making memories. Our custom
                     travel
                     plans are designed around your preferences, budget, and sense of adventure.</p>
-                <a href="destinations.html" class="trvl-btn-outline">Explore More</a>
+                        <a href="{{ route('destinations.index') }}" class="trvl-btn-outline">Explore More</a>
             </div>
         </section>
         <section class="trvl-features-wrap">

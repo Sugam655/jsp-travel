@@ -51,23 +51,18 @@ test('the car rental detail page Book Now button pre-selects the vehicle on the 
         ->assertSee('value="'.$vehicle->id.'"', false);
 });
 
-test('a guest who clicks Book Now on a car rental reaches the form after logging in', function () {
-    $user = User::factory()->create(['password' => bcrypt('password')]);
+test('a guest who clicks Rent Now on a car rental reaches the pre-filled form directly', function () {
     $vehicle = TransportVehicle::query()->first();
     $url = route('bookings.create', ['type' => 'vehicle', 'slug' => $vehicle->slug]);
 
-    $this->get($url)->assertRedirect('/login');
-
-    $login = $this->from($url)
-        ->post('/login', ['email' => $user->email, 'password' => 'password'])
-        ->assertRedirect()
-        ->assertRedirectContains('bookings/create');
-
-    parse_str((string) parse_url($login->headers->get('Location'), PHP_URL_QUERY), $query);
+    parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
     expect($query)->toMatchArray(['type' => 'vehicle', 'slug' => $vehicle->slug]);
 
-    $this->actingAs($user)->get($url)->assertOk()->assertSee($vehicle->name);
+    $this->get($url)
+        ->assertOk()
+        ->assertSee($vehicle->name)
+        ->assertSee('value="'.$vehicle->id.'"', false);
 });
 
 test('a customer with no phone or address in their profile can book a car rental directly', function () {
@@ -149,13 +144,17 @@ test('a customer with no completed profile is not blocked from reaching a hotel 
 test('an adjacent car rental can be booked the day the previous rental ends', function () {
     $user = User::factory()->create();
     $vehicle = TransportVehicle::query()->first();
+    $start = now()->addDays(10)->toDateString();
+    $end = now()->addDays(13)->toDateString();
+    $nextStart = now()->addDays(13)->toDateString();
+    $nextEnd = now()->addDays(16)->toDateString();
 
     $this->actingAs($user)
-        ->post('/bookings', carBookingPayload($vehicle, '2026-09-25', '2026-09-28', 4))
+        ->post('/bookings', carBookingPayload($vehicle, $start, $end, 4))
         ->assertRedirect();
 
     $this->actingAs($user)
-        ->post('/bookings', carBookingPayload($vehicle, '2026-09-29', '2026-10-02', 4))
+        ->post('/bookings', carBookingPayload($vehicle, $nextStart, $nextEnd, 4))
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
@@ -165,19 +164,92 @@ test('an adjacent car rental can be booked the day the previous rental ends', fu
 test('an overlapping car rental request shows a clear error and is not created', function () {
     $user = User::factory()->create();
     $vehicle = TransportVehicle::query()->first();
+    $start = now()->addDays(10)->toDateString();
+    $end = now()->addDays(13)->toDateString();
+    $overlapStart = now()->addDays(11)->toDateString();
+    $overlapEnd = now()->addDays(14)->toDateString();
 
     $this->actingAs($user)
-        ->post('/bookings', carBookingPayload($vehicle, '2026-09-25', '2026-09-28', 4))
+        ->post('/bookings', carBookingPayload($vehicle, $start, $end, 4))
         ->assertRedirect();
 
     $response = $this->actingAs($user)
-        ->post('/bookings', carBookingPayload($vehicle, '2026-09-26', '2026-09-29', 4))
+        ->post('/bookings', carBookingPayload($vehicle, $overlapStart, $overlapEnd, 4))
         ->assertRedirect()
         ->assertSessionHasErrors('booking');
 
     expect(collect(session('errors')->get('booking'))->first())->toContain('not available');
 
     expect(Booking::query()->where('booking_type', 'vehicle')->count())->toBe(1);
+});
+
+test('a per day vehicle is priced by the number of rental days', function () {
+    $user = User::factory()->create();
+    $vehicle = TransportVehicle::query()->where('price_unit', 'per_day')->firstOrFail();
+
+    $quote = (new PriceCalculator)->quote('vehicle', $vehicle, '2026-10-10', '2026-10-13', 2);
+
+    expect($quote['quantity'])->toBe(3)
+        ->and($quote['duration_label'])->toBe('3 day(s)')
+        ->and((float) $quote['subtotal'])->toBe(round((float) $vehicle->price * 3, 2));
+});
+
+test('a per trip vehicle is quoted as a flat rate regardless of duration', function () {
+    $user = User::factory()->create();
+    $vehicle = TransportVehicle::query()->where('price_unit', 'per_trip')->firstOrFail();
+
+    $quote = (new PriceCalculator)->quote('vehicle', $vehicle, '2026-10-10', '2026-10-13', 2);
+
+    expect($quote['quantity'])->toBe(1)
+        ->and($quote['duration_label'])->toBe('Per trip')
+        ->and((float) $quote['subtotal'])->toBe(round((float) $vehicle->price, 2));
+});
+
+test('a per hour vehicle is left at zero for an admin to quote instead of billing days', function () {
+    $user = User::factory()->create();
+    $vehicle = TransportVehicle::query()->where('price_unit', 'per_day')->firstOrFail();
+    $vehicle->update(['price_unit' => 'per_hour']);
+
+    $quote = (new PriceCalculator)->quote('vehicle', $vehicle, '2026-10-10', '2026-10-13', 2);
+
+    expect($quote['quantity'])->toBe(0)
+        ->and($quote['duration_label'])->toBe('To be quoted')
+        ->and((float) $quote['subtotal'])->toBe(0.0)
+        ->and((float) $quote['total'])->toBe(0.0)
+        ->and($quote['recalc_note'])->toBe('Quoted by our team');
+});
+
+test('a contact us vehicle is left at zero for an admin to quote', function () {
+    $user = User::factory()->create();
+    $vehicle = TransportVehicle::query()->where('price_unit', 'per_day')->firstOrFail();
+    $vehicle->update(['price_unit' => 'contact']);
+
+    $quote = (new PriceCalculator)->quote('vehicle', $vehicle, '2026-10-10', '2026-10-13', 2);
+
+    expect($quote['quantity'])->toBe(0)
+        ->and((float) $quote['total'])->toBe(0.0);
+});
+
+test('a per hour vehicle booking reaches an admin with no fabricated total so set price applies', function () {
+    $user = User::factory()->create();
+    $vehicle = TransportVehicle::query()->where('price_unit', 'per_day')->firstOrFail();
+    $vehicle->update(['price_unit' => 'per_hour']);
+
+    $this->actingAs($user)
+        ->post('/bookings', carBookingPayload($vehicle, '2026-10-10', '2026-10-13', 2))
+        ->assertRedirect();
+
+    $booking = Booking::query()->where('booking_type', 'vehicle')->firstOrFail();
+
+    expect((float) $booking->total_amount)->toBe(0.0);
+
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->actingAs($admin)
+        ->post('/admin/bookings/'.$booking->id.'/set-price', ['base_price' => 15000])
+        ->assertRedirect();
+
+    expect((float) $booking->fresh()->total_amount)->toBeGreaterThan(0.0);
 });
 
 test('an admin cancellation of a car rental is visible to the customer and notifies them', function () {

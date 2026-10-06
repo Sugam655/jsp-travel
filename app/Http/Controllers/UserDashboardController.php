@@ -46,12 +46,13 @@ class UserDashboardController extends Controller
             ->whereIn('booking_id', $ownedPaymentBookingIds)
             ->sum('amount');
 
-        return view('frontend.dashboard', [
+        return view('user.dashboard', [
             'user' => $user,
             'bookings' => $bookings,
             'payments' => $payments,
             'paymentsTotal' => max(0, $verifiedTotal - $processedRefunds),
             'paymentsPending' => Payment::query()->where($ownedPayments)->where('status', 'pending')->count(),
+            'notificationsUnread' => $user->unreadNotifications()->count(),
         ]);
     }
 }

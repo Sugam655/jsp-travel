@@ -24,16 +24,17 @@
     <!-- Search Bar -->
     <div class="nest-searchbar">
         <div class="container">
-            <div class="nest-searchbox">
+            <form class="nest-searchbox" method="GET" action="{{ route('hotel') }}" id="nestSearchForm">
                 <div class="row g-4 align-items-end">
                     <div class="col-12 col-md-6 col-lg-3">
                         <div class="nest-searchgroup">
                             <i class="bi bi-geo-alt"></i>
-                            <label class="nest-searchlabel">Location</label>
-                            <select class="nest-searchfield" id="nestFilterLoc">
+                            <label class="nest-searchlabel" for="nestFilterLoc">Location</label>
+                            <select class="nest-searchfield" id="nestFilterLoc" name="location">
                                 <option value="">Select Location</option>
                                 @foreach ($locations as $location)
-                                    <option value="{{ $location }}">{{ $location }}</option>
+                                    <option value="{{ $location }}"
+                                        @selected(($filters['location'] ?? null) === $location)>{{ $location }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -41,34 +42,34 @@
                     <div class="col-12 col-md-6 col-lg-3">
                         <div class="nest-searchgroup">
                             <i class="bi bi-star"></i>
-                            <label class="nest-searchlabel">Star Rating</label>
-                            <select class="nest-searchfield" id="nestFilterType">
+                            <label class="nest-searchlabel" for="nestFilterType">Star Rating</label>
+                            <select class="nest-searchfield" id="nestFilterType" name="rating">
                                 <option value="">Any Rating</option>
-                                <option value="5">5 Star</option>
-                                <option value="4">4 Star</option>
-                                <option value="3">3 Star</option>
-                                <option value="2">2 Star</option>
-                                <option value="1">1 Star</option>
+                                @foreach ([5, 4, 3, 2, 1] as $star)
+                                    <option value="{{ $star }}"
+                                        @selected((string) ($filters['rating'] ?? '') === (string) $star)>{{ $star }} Star</option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
                     <div class="col-12 col-md-6 col-lg-3">
                         <div class="nest-searchgroup">
                             <i class="bi bi-currency-rupee"></i>
-                            <label class="nest-searchlabel">Price Range</label>
-                            <select class="nest-searchfield" id="nestFilterPrice">
+                            <label class="nest-searchlabel" for="nestFilterPrice">Price Range</label>
+                            <select class="nest-searchfield" id="nestFilterPrice" name="max_price">
                                 <option value="">Any Price</option>
                                 @foreach ($priceOptions as $option)
-                                    <option value="{{ $option }}">Under Rs {{ number_format($option) }}</option>
+                                    <option value="{{ $option }}"
+                                        @selected((string) ($filters['max_price'] ?? '') === (string) $option)>Under Rs {{ number_format($option) }}</option>
                                 @endforeach
                             </select>
                         </div>
                     </div>
                     <div class="col-12 col-md-6 col-lg-3">
-                        <button class="nest-searchbtn" id="nestSearchBtn"><i class="bi bi-search"></i> Search</button>
+                        <button type="submit" class="nest-searchbtn" id="nestSearchBtn"><i class="bi bi-search"></i> Search</button>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -85,7 +86,11 @@
                     @include('frontend.partials.hotel-card', ['hotel' => $hotel])
                 @empty
                     <div class="col-12 text-center text-muted py-4">
-                        Hotels are coming soon.
+                        @if (array_filter($filters))
+                            No hotels match your search. Please try a different location, rating or price.
+                        @else
+                            Hotels are coming soon.
+                        @endif
                     </div>
                 @endforelse
             </div>

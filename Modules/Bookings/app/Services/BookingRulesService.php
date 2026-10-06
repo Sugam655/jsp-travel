@@ -77,11 +77,7 @@ class BookingRulesService
 
         if ($start !== null && $end !== null) {
             if (! $end->greaterThan($start)) {
-                $errors[] = match ($bookingType) {
-                    'hotel' => 'Check-out date must be after the check-in date.',
-                    'vehicle' => 'Return date must be after the pickup date.',
-                    default => 'The end date must be after the start date.',
-                };
+                $errors[] = $this->endDateOrderMessage($bookingType);
             }
 
             if ($bookingType === 'tour' && ! $this->tourDurationMatches($service, $start, $end)) {
@@ -102,6 +98,59 @@ class BookingRulesService
         }
 
         return ['valid' => count($errors) === 0, 'errors' => $errors];
+    }
+
+    /**
+     * The wording this rule reports when the end date is not after the start.
+     *
+     * Exposed so a page can label the field with exactly what the server is
+     * going to say, rather than restating the rule in a second, different set of
+     * words that then contradicts it.
+     */
+    public function endDateOrderMessage(string $bookingType): string
+    {
+        return match ($bookingType) {
+            'hotel' => 'Check-out date must be after the check-in date.',
+            'vehicle' => 'Return date must be after the pickup date.',
+            default => 'The end date must be after the start date.',
+        };
+    }
+
+    /**
+     * The largest party this service can actually take.
+     *
+     * A vehicle's seat count is a hard limit the rules enforce anyway; hotels and
+     * tours have no stored capacity unless a tour is capped, so they use the same
+     * ceiling the booking request validates against.
+     */
+    public function maxTravelers(string $bookingType, mixed $service): int
+    {
+        $maxTravelers = (int) config('booking.max_travelers', 100);
+
+        if ($bookingType === 'vehicle') {
+            $capacity = (int) ($service->seating_capacity ?? 0);
+
+            return $capacity > 0 ? $capacity : $maxTravelers;
+        }
+
+        if ($bookingType === 'tour' && (int) ($service->capacity ?? 0) > 0) {
+            return (int) $service->capacity;
+        }
+
+        return $maxTravelers;
+    }
+
+    /**
+     * The party size a brand new booking request starts from.
+     *
+     * Derived per service rather than fixed, so a small vehicle never opens on a
+     * party it cannot seat. The search page starts its confirmation popups from
+     * the same number, so the two can never disagree about the party being
+     * booked.
+     */
+    public function defaultTravelers(string $bookingType, mixed $service): int
+    {
+        return min(2, $this->maxTravelers($bookingType, $service));
     }
 
     /**

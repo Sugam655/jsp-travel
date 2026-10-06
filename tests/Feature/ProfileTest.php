@@ -97,7 +97,7 @@ test('email verification status is unchanged when the email address is unchanged
 test('a customer is prompted to complete their profile and is returned to the profile page', function () {
     $user = User::factory()->create(['is_admin' => false]);
 
-    $this->actingAs($user)->get('/my-account')
+    $this->actingAs($user)->get('/user/dashboard')
         ->assertOk()
         ->assertSee('Complete Your Profile');
 
@@ -113,7 +113,7 @@ test('a customer is prompted to complete their profile and is returned to the pr
 
     $response->assertRedirect('/profile');
 
-    $this->actingAs($user)->get('/my-account')
+    $this->actingAs($user)->get('/user/dashboard')
         ->assertOk()
         ->assertDontSee('Complete Your Profile');
 });

@@ -22,7 +22,7 @@
 
     @php
         $actions = $booking->adminActions();
-        $payments = $booking->payments()->get();
+        $payments = $booking->payments()->with(['recorder', 'verifier'])->get();
         $pendingPaymentForAction = $payments->firstWhere('status', 'pending');
         $refunds = $booking->refunds()->get();
         $history = $booking->history()->take(40)->get();
@@ -185,6 +185,12 @@
                                 <td class="ps-4">Quantity ({{ $booking->quantity ?? 1 }})</td>
                                 <td class="text-end pe-4">{{ $booking->currency }} {{ number_format((float) $booking->base_price ?? 0, 2) }}</td>
                             </tr>
+                            @if ($booking->has_discount)
+                                <tr>
+                                    <td class="ps-4">{{ $booking->discount_display }}</td>
+                                    <td class="text-end pe-4 text-danger">&minus;{{ $booking->currency }} {{ number_format((float) $booking->discount, 2) }}</td>
+                                </tr>
+                            @endif
                             <tr>
                                 <td class="ps-4">Tax ({{ (float) $booking->tax_rate }}%)</td>
                                 <td class="text-end pe-4">{{ $booking->currency }} {{ number_format((float) $booking->tax_amount ?? 0, 2) }}</td>
@@ -193,12 +199,6 @@
                                 <td class="ps-4">Service charge ({{ (float) $booking->service_charge_rate }}%)</td>
                                 <td class="text-end pe-4">{{ $booking->currency }} {{ number_format((float) $booking->service_charge ?? 0, 2) }}</td>
                             </tr>
-                            @if ((float) ($booking->discount ?? 0) > 0)
-                                <tr>
-                                    <td class="ps-4">Discount</td>
-                                    <td class="text-end pe-4 text-danger">&minus;{{ $booking->currency }} {{ number_format((float) $booking->discount, 2) }}</td>
-                                </tr>
-                            @endif
                             <tr class="bg-light">
                                 <td class="ps-4 fw-bold">Total</td>
                                 <td class="text-end pe-4 fw-bold">{{ $booking->amount_display }}</td>
@@ -254,6 +254,7 @@
                                     <th>Type</th>
                                     <th>Reference</th>
                                     <th>Evidence</th>
+                                    <th>Recorded / Verified</th>
                                     <th class="text-end">Amount</th>
                                     <th>Status</th>
                                 </tr>
@@ -273,6 +274,25 @@
                                             @endif
                                             @if ($payment->note)
                                                 <span class="d-block small text-muted" style="white-space: pre-wrap;">{{ $payment->note }}</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if ($payment->recorder)
+                                                <span class="d-block small">
+                                                    <span class="text-muted">Recorded by</span>
+                                                    <strong>{{ $payment->recorder->name }}</strong>
+                                                </span>
+                                            @endif
+                                            @if ($payment->verifier)
+                                                <span class="d-block small">
+                                                    <span class="text-muted">Verified by</span>
+                                                    <strong>{{ $payment->verifier->name }}</strong>
+                                                    @if ($payment->verified_at)
+                                                        <span class="text-muted">{{ $payment->verified_at->format('M d, Y') }}</span>
+                                                    @endif
+                                                </span>
+                                            @else
+                                                <span class="d-block small text-muted">Not verified</span>
                                             @endif
                                         </td>
                                         <td class="text-end">{{ $payment->amount_display }}</td>

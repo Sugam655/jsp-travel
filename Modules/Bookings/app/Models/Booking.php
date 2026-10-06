@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Str;
+use Modules\Bookings\Services\DiscountResolver;
 
 class Booking extends Model
 {
@@ -40,6 +41,9 @@ class Booking extends Model
         'tax_amount',
         'service_charge',
         'discount',
+        'discount_type',
+        'discount_value',
+        'discount_label',
         'total_amount',
         'advance_amount',
         'payment_due_date',
@@ -79,6 +83,7 @@ class Booking extends Model
         'tax_amount' => 'decimal:2',
         'service_charge' => 'decimal:2',
         'discount' => 'decimal:2',
+        'discount_value' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'advance_amount' => 'decimal:2',
         'payment_due_date' => 'date',
@@ -356,6 +361,32 @@ class Booking extends Model
     }
 
     /**
+     * Whether a discount was actually taken off this booking.
+     */
+    public function getHasDiscountAttribute(): bool
+    {
+        return (float) ($this->discount ?? 0) > 0;
+    }
+
+    /**
+     * How this booking's discount was described, read from the snapshot stored
+     * on the booking rather than from today's settings.
+     */
+    public function getDiscountDisplayAttribute(): string
+    {
+        if (! $this->has_discount) {
+            return 'Discount';
+        }
+
+        return 'Discount ('.DiscountResolver::describe(
+            $this->discount_type,
+            $this->discount_value,
+            $this->discount_label,
+            (string) ($this->currency ?? 'NPR')
+        ).')';
+    }
+
+    /**
      * The formatted amount already paid by the customer.
      */
     public function getPaidDisplayAttribute(): string
@@ -596,10 +627,9 @@ class Booking extends Model
             $actions[] = ['action' => 'cancel', 'label' => 'Cancel Booking', 'icon' => 'fa-solid fa-ban', 'color' => 'btn-danger'];
         }
 
-        if ($this->status === 'paid' && $this->settledAmount() > 0) {
-            $actions[] = ['action' => 'refund', 'label' => 'Process Refund', 'icon' => 'fa-solid fa-rotate-left', 'color' => 'btn-warning'];
-        }
-
+        // Only the cancellation path issues refunds, so a refund is actionable
+        // only once the booking is cancelled and a pending refund exists. A
+        // "refund" action here had no route and rendered a dead button.
         if ($this->status === 'cancelled' && $this->refunds()->where('status', 'pending')->exists()) {
             $actions[] = ['action' => 'process-refund', 'label' => 'Process Refund', 'icon' => 'fa-solid fa-rotate-left', 'color' => 'btn-warning'];
         }

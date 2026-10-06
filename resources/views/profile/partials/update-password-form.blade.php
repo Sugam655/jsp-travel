@@ -1,5 +1,5 @@
 <section>
-    <div class="card card-primary card-outline mb-4">
+    <div class="card shadow-sm mb-4">
         <div class="card-header">
             <h3 class="card-title">{{ __('Update Password') }}</h3>
             <p class="card-text small text-muted mb-0 mt-1">

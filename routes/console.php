@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use Modules\Bookings\Models\Booking;
 use Modules\Bookings\Notifications\BookingNotification;
+use Modules\Bookings\Services\BookingWorkflowService;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -61,4 +62,11 @@ Artisan::command('bookings:notify-due-payments', function (): void {
     $this->info("Payment reminders sent: {$notified}.");
 })->purpose('Notify customers when the remaining payment for a booking becomes due');
 
+Artisan::command('bookings:expire-overdue', function (): void {
+    $expired = app(BookingWorkflowService::class)->expireOverdueBookings();
+
+    $this->info("Bookings expired: {$expired}.");
+})->purpose('Expire pending bookings that passed their confirmation/payment deadline');
+
 Schedule::command('bookings:notify-due-payments')->dailyAt('09:00');
+Schedule::command('bookings:expire-overdue')->hourly();

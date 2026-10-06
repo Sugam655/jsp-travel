@@ -2,33 +2,53 @@
    MAIN WEBSITE JAVASCRIPT
 ========================================================= */
 
-/* ACTIVE NAVIGATION - always follows the real page URL */
+/* ACTIVE NAVIGATION - derived from the Laravel route path, never a file name */
 const navigationLinks = document.querySelectorAll(".nav-links a, .mobile-nav > a, .nav-cta");
-function getFileName(value) {
-    if (!value) return "index.html";
+const navPathRules = [
+    { key: "tours", pattern: /^\/(?:tours|destinations)(?:\/|$)/ },
+    { key: "hotels", pattern: /^\/(?:hotel|hotels)(?:\/|$)/ },
+    { key: "car-rental", pattern: /^\/transport(?:\/|$)/ },
+    { key: "about", pattern: /^\/about(?:\/|$)/ },
+    { key: "contact", pattern: /^\/contact(?:\/|$)/ },
+    { key: "home", pattern: /^\/?$/ }
+];
+const bookingTypeToNavKey = { hotel: "hotels", vehicle: "car-rental", tour: "tours" };
+
+function getPathname(value) {
     try {
-        const url = new URL(value, window.location.href);
-        const fileName = decodeURIComponent(url.pathname.split("/").pop() || "index.html");
-        return fileName.trim().replace(/\s+/g, " ").toLowerCase();
-    } catch (error) { return "index.html"; }
+        return new URL(value, window.location.href).pathname.replace(/\/+$/, "") || "/";
+    } catch (error) { return "/"; }
 }
+
+function getNavKey(value) {
+    const pathname = getPathname(value);
+    const rule = navPathRules.find(function (entry) { return entry.pattern.test(pathname); });
+    return rule ? rule.key : null;
+}
+
+/* /book is the search for one booking type, so it highlights the same navbar
+   entry as the listing that type belongs to. Without ?type= it has no single
+   home, so it stays unhighlighted rather than guessing. */
 function getActiveNavPage() {
-    const currentPage = getFileName(window.location.href);
-    const service = new URLSearchParams(window.location.search).get("service");
-    if (currentPage === "hotel-detail.html") return "hotel.html";
-    if (currentPage === "tour-detail.html") return "destinations.html";
-    if (currentPage === "booking.html") {
-        if (service === "hotel") return "hotel.html";
-        if (service === "car") return "transport .html";
-        if (service === "tour") return "destinations.html";
-        return "booking.html";
+    const pathname = getPathname(window.location.href);
+
+    if (pathname === "/book") {
+        const type = new URLSearchParams(window.location.search).get("type");
+        return type ? bookingTypeToNavKey[type] || null : null;
     }
-    return currentPage;
+
+    if (/^\/bookings(?:\/|$)/.test(pathname)) {
+        const type = new URLSearchParams(window.location.search).get("type");
+        return bookingTypeToNavKey[type] || "booking";
+    }
+
+    return getNavKey(window.location.href);
 }
+
 function updateActiveNavigation() {
     const activePage = getActiveNavPage();
     navigationLinks.forEach(function (link) {
-        const isActive = getFileName(link.href) === activePage;
+        const isActive = getNavKey(link.href) === activePage;
         link.classList.toggle("active", isActive);
         if (isActive) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
@@ -989,197 +1009,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    /* ===== INVENTORY FILTER ===== */
-
-    const amcFilterButtons =
-        document.querySelectorAll("[data-amc-filter]");
-
-    const amcVehicleItems =
-        document.querySelectorAll(".amc-vehicleitem");
-
-    amcFilterButtons.forEach(function (button) {
-        button.addEventListener("click", function () {
-            const filterValue =
-                this.getAttribute("data-amc-filter");
-
-            amcFilterButtons.forEach(function (item) {
-                item.classList.remove("active");
-            });
-
-            this.classList.add("active");
-
-            amcVehicleItems.forEach(function (vehicle) {
-                const vehicleType =
-                    vehicle.getAttribute("data-amc-type");
-
-                if (
-                    filterValue === "all" ||
-                    vehicleType === filterValue
-                ) {
-                    vehicle.style.display = "block";
-
-                    setTimeout(function () {
-                        vehicle.style.opacity = "1";
-                        vehicle.style.transform =
-                            "translateY(0)";
-                    }, 50);
-                } else {
-                    vehicle.style.opacity = "0";
-                    vehicle.style.transform =
-                        "translateY(20px)";
-
-                    setTimeout(function () {
-                        vehicle.style.display = "none";
-                    }, 300);
-                }
-            });
-        });
-    });
-
-
-    /* ===== SEARCH FILTER ===== */
-
-    const amcSearchBtn =
-        document.getElementById("amcSearchBtn");
-
-    const amcFilterMake =
-        document.getElementById("amcFilterMake");
-
-    const amcFilterModel =
-        document.getElementById("amcFilterModel");
-
-    const amcFilterBody =
-        document.getElementById("amcFilterBody");
-
-    const amcFilterPrice =
-        document.getElementById("amcFilterPrice");
-
-    function amcApplySearch() {
-        if (
-            !amcFilterMake ||
-            !amcFilterModel ||
-            !amcFilterBody ||
-            !amcFilterPrice
-        ) {
-            return;
-        }
-
-        const makeValue =
-            amcFilterMake.value.toLowerCase();
-
-        const modelValue =
-            amcFilterModel.value.toLowerCase();
-
-        const bodyValue =
-            amcFilterBody.value.toLowerCase();
-
-        const priceValue =
-            parseInt(amcFilterPrice.value) ||
-            Infinity;
-
-        amcVehicleItems.forEach(function (vehicle) {
-            const vehicleMake =
-                (
-                    vehicle.getAttribute(
-                        "data-amc-make"
-                    ) || ""
-                ).toLowerCase();
-
-            const vehicleModel =
-                (
-                    vehicle.getAttribute(
-                        "data-amc-model"
-                    ) || ""
-                ).toLowerCase();
-
-            const vehicleType =
-                (
-                    vehicle.getAttribute(
-                        "data-amc-type"
-                    ) || ""
-                ).toLowerCase();
-
-            const vehiclePrice =
-                parseInt(
-                    vehicle.getAttribute(
-                        "data-amc-price"
-                    )
-                ) || 0;
-
-            const makeMatches =
-                !makeValue ||
-                vehicleMake === makeValue;
-
-            const modelMatches =
-                !modelValue ||
-                vehicleModel === modelValue;
-
-            const bodyMatches =
-                !bodyValue ||
-                vehicleType === bodyValue;
-
-            const priceMatches =
-                vehiclePrice <= priceValue;
-
-            if (
-                makeMatches &&
-                modelMatches &&
-                bodyMatches &&
-                priceMatches
-            ) {
-                vehicle.style.display = "block";
-
-                setTimeout(function () {
-                    vehicle.style.opacity = "1";
-                    vehicle.style.transform =
-                        "translateY(0)";
-                }, 50);
-            } else {
-                vehicle.style.opacity = "0";
-                vehicle.style.transform =
-                    "translateY(20px)";
-
-                setTimeout(function () {
-                    vehicle.style.display = "none";
-                }, 300);
-            }
-        });
-
-        const inventorySection =
-            document.getElementById(
-                "amcInventory"
-            );
-
-        if (inventorySection) {
-            inventorySection.scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-            });
-        }
-    }
-
-    if (amcSearchBtn) {
-        amcSearchBtn.addEventListener(
-            "click",
-            amcApplySearch
-        );
-    }
-
-    [
-        amcFilterMake,
-        amcFilterModel,
-        amcFilterBody,
-        amcFilterPrice
-    ].forEach(function (select) {
-        if (select) {
-            select.addEventListener(
-                "change",
-                amcApplySearch
-            );
-        }
-    });
-
-
     /* ===== SCROLL ANIMATIONS ===== */
 
     const amcFadeElements =
@@ -1224,6 +1053,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ===== VEHICLE CARD ENTRANCE ===== */
 
+    const amcVehicleItems =
+        document.querySelectorAll(".amc-vehicleitem");
+
     amcVehicleItems.forEach(
         function (vehicle, index) {
             vehicle.style.opacity = "0";
@@ -1256,142 +1088,6 @@ document.addEventListener("DOMContentLoaded", function () {
 ===================================================== */
 
 document.addEventListener("DOMContentLoaded", function () {
-
-    /* ===== HOTEL SEARCH FILTER ===== */
-
-    const nestSearchBtn =
-        document.getElementById("nestSearchBtn");
-
-    const nestFilterLoc =
-        document.getElementById("nestFilterLoc");
-
-    const nestFilterType =
-        document.getElementById("nestFilterType");
-
-    const nestFilterPrice =
-        document.getElementById("nestFilterPrice");
-
-    const nestPropertyItems =
-        document.querySelectorAll(
-            ".nest-propertyitem"
-        );
-
-    function nestApplySearch() {
-        if (
-            !nestFilterLoc ||
-            !nestFilterType ||
-            !nestFilterPrice
-        ) {
-            return;
-        }
-
-        const locationValue =
-            nestFilterLoc.value.toLowerCase();
-
-        const typeValue =
-            nestFilterType.value.toLowerCase();
-
-        const priceValue =
-            parseInt(nestFilterPrice.value) ||
-            Infinity;
-
-        nestPropertyItems.forEach(
-            function (property) {
-                const propertyLocation =
-                    (
-                        property.getAttribute(
-                            "data-nest-loc"
-                        ) || ""
-                    ).toLowerCase();
-
-                const propertyType =
-                    (
-                        property.getAttribute(
-                            "data-nest-type"
-                        ) || ""
-                    ).toLowerCase();
-
-                const propertyPrice =
-                    parseInt(
-                        property.getAttribute(
-                            "data-nest-price"
-                        )
-                    ) || 0;
-
-                const locationMatches =
-                    !locationValue ||
-                    propertyLocation ===
-                    locationValue;
-
-                const typeMatches =
-                    !typeValue ||
-                    propertyType === typeValue;
-
-                const priceMatches =
-                    propertyPrice <= priceValue;
-
-                if (
-                    locationMatches &&
-                    typeMatches &&
-                    priceMatches
-                ) {
-                    property.style.display =
-                        "block";
-
-                    setTimeout(function () {
-                        property.style.opacity =
-                            "1";
-
-                        property.style.transform =
-                            "translateY(0)";
-                    }, 50);
-                } else {
-                    property.style.opacity = "0";
-
-                    property.style.transform =
-                        "translateY(20px)";
-
-                    setTimeout(function () {
-                        property.style.display =
-                            "none";
-                    }, 300);
-                }
-            }
-        );
-
-        const propertySection =
-            document.getElementById(
-                "nestProperties"
-            );
-
-        if (propertySection) {
-            propertySection.scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-            });
-        }
-    }
-
-    if (nestSearchBtn) {
-        nestSearchBtn.addEventListener(
-            "click",
-            nestApplySearch
-        );
-    }
-
-    [
-        nestFilterLoc,
-        nestFilterType,
-        nestFilterPrice
-    ].forEach(function (select) {
-        if (select) {
-            select.addEventListener(
-                "change",
-                nestApplySearch
-            );
-        }
-    });
-
 
     /* ===== SCROLL ANIMATIONS ===== */
 
@@ -1445,6 +1141,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ===== HOTEL CARD ENTRANCE ===== */
 
+    const nestPropertyItems =
+        document.querySelectorAll(".nest-propertyitem");
+
     nestPropertyItems.forEach(
         function (property, index) {
             property.style.opacity = "0";
@@ -1485,532 +1184,17 @@ document.addEventListener("DOMContentLoaded", function () {
 */
 
 
-/* ===== BOOKING TAB SWITCHING ===== */
-function activateBookingTab(tabName, updateUrl) {
-    const allowedTabs = ["flight", "hotel", "car", "tour"];
-    const selectedTabName = allowedTabs.includes(tabName) ? tabName : "flight";
-    document.querySelectorAll(".fh-booking-tab").forEach(function (tab) {
-        tab.classList.toggle("active", tab.dataset.tab === selectedTabName);
-    });
-    document.querySelectorAll(".fh-flight-form, .fh-hotel-form, .fh-car-form, .fh-tour-form").forEach(function (form) {
-        form.classList.remove("active");
-    });
-    const selectedForm = document.getElementById("fh-" + selectedTabName + "Form");
-    if (selectedForm) selectedForm.classList.add("active");
-    if (updateUrl) {
-        const url = new URL(window.location.href);
-        url.searchParams.set("service", selectedTabName);
-        window.history.replaceState({}, "", url);
-        updateActiveNavigation();
-    }
-}
-document.querySelectorAll(".fh-booking-tab").forEach(function (tab) {
-    tab.addEventListener("click", function () { activateBookingTab(this.dataset.tab, true); });
-});
-if (document.querySelector(".fh-booking-tab")) {
-    const requestedService = new URLSearchParams(window.location.search).get("service");
-    activateBookingTab(requestedService || "flight", false);
-}
-
-/* ===== DROPDOWN CONTROL ===== */
-
-function toggleDropdown(dropdownId) {
-    const selectedDropdown =
-        document.getElementById(dropdownId);
-
-    if (!selectedDropdown) {
-        return;
-    }
-
-    document
-        .querySelectorAll(
-            ".fh-passenger-dropdown"
-        )
-        .forEach(function (dropdown) {
-            if (
-                dropdown.id !== dropdownId
-            ) {
-                dropdown.classList.remove(
-                    "show"
-                );
-            }
-        });
-
-    selectedDropdown.classList.toggle(
-        "show"
-    );
-}
-
-const bookingDropdowns = [
-    [
-        "fh-tripTypeBtn",
-        "fh-tripDropdown"
-    ],
-    [
-        "fh-passengerBtn",
-        "fh-passengerDropdown"
-    ],
-    [
-        "fh-classBtn",
-        "fh-classDropdown"
-    ],
-    [
-        "fh-hotelGuestsBtn",
-        "fh-hotelGuestsDropdown"
-    ],
-    [
-        "fh-carTypeBtn",
-        "fh-carTypeDropdown"
-    ],
-    [
-        "fh-tourTypeBtn",
-        "fh-tourTypeDropdown"
-    ]
-];
-
-bookingDropdowns.forEach(
-    function (dropdownDetails) {
-        const buttonId =
-            dropdownDetails[0];
-
-        const dropdownId =
-            dropdownDetails[1];
-
-        const button =
-            document.getElementById(
-                buttonId
-            );
-
-        if (button) {
-            button.addEventListener(
-                "click",
-                function (event) {
-                    event.stopPropagation();
-
-                    toggleDropdown(
-                        dropdownId
-                    );
-                }
-            );
-        }
-    }
-);
-
-document.addEventListener(
-    "click",
-    function () {
-        document
-            .querySelectorAll(
-                ".fh-passenger-dropdown"
-            )
-            .forEach(function (dropdown) {
-                dropdown.classList.remove(
-                    "show"
-                );
-            });
-    }
-);
-
-
-/* ===== CHANGE DROPDOWN VALUE ===== */
-
-function setDropdownValue(
-    textId,
-    dropdownId,
-    value
-) {
-    const textElement =
-        document.getElementById(textId);
-
-    const dropdown =
-        document.getElementById(
-            dropdownId
-        );
-
-    if (textElement) {
-        textElement.textContent = value;
-    }
-
-    if (dropdown) {
-        dropdown.classList.remove(
-            "show"
-        );
-    }
-}
-
-function setTripType(value) {
-    setDropdownValue(
-        "fh-tripTypeText",
-        "fh-tripDropdown",
-        value
-    );
-}
-
-function setClass(value) {
-    setDropdownValue(
-        "fh-classText",
-        "fh-classDropdown",
-        value
-    );
-}
-
-function setCarType(value) {
-    setDropdownValue(
-        "fh-carTypeText",
-        "fh-carTypeDropdown",
-        value
-    );
-}
-
-function setTourType(value) {
-    setDropdownValue(
-        "fh-tourTypeText",
-        "fh-tourTypeDropdown",
-        value
-    );
-}
-
-
-/* ===== FLIGHT PASSENGERS ===== */
-
-let passengers = {
-    adults: 2,
-    children: 0,
-    infants: 0
-};
-
-function updatePassenger(
-    passengerType,
-    change
-) {
-    if (
-        !Object.prototype.hasOwnProperty.call(
-            passengers,
-            passengerType
-        )
-    ) {
-        return;
-    }
-
-    const minimumValue =
-        passengerType === "adults"
-            ? 1
-            : 0;
-
-    passengers[passengerType] =
-        Math.max(
-            minimumValue,
-            passengers[passengerType] +
-            change
-        );
-
-    const countElement =
-        document.getElementById(
-            "fh-" +
-            passengerType +
-            "Count"
-        );
-
-    if (countElement) {
-        countElement.textContent =
-            passengers[passengerType];
-    }
-
-    const totalPassengers =
-        passengers.adults +
-        passengers.children +
-        passengers.infants;
-
-    const passengerText =
-        document.getElementById(
-            "fh-passengerText"
-        );
-
-    if (passengerText) {
-        passengerText.textContent =
-            String(totalPassengers).padStart(
-                2,
-                "0"
-            ) + " Passengers";
-    }
-}
-
-
-/* ===== HOTEL GUESTS AND ROOMS ===== */
-
-let hotelGuests = 2;
-let hotelRooms = 1;
-
-function updateHotelSummary() {
-    const guestCount =
-        document.getElementById(
-            "fh-hotelGuestCount"
-        );
-
-    const roomCount =
-        document.getElementById(
-            "fh-hotelRoomCount"
-        );
-
-    const summary =
-        document.getElementById(
-            "fh-hotelGuestsText"
-        );
-
-    if (guestCount) {
-        guestCount.textContent =
-            hotelGuests;
-    }
-
-    if (roomCount) {
-        roomCount.textContent =
-            hotelRooms;
-    }
-
-    if (summary) {
-        summary.textContent =
-            String(hotelGuests).padStart(
-                2,
-                "0"
-            ) +
-            " Guests, " +
-            hotelRooms +
-            " Room" +
-            (hotelRooms > 1 ? "s" : "");
-    }
-}
-
-function updateHotelGuests(change) {
-    hotelGuests = Math.max(
-        1,
-        hotelGuests + change
-    );
-
-    updateHotelSummary();
-}
-
-function updateHotelRooms(change) {
-    hotelRooms = Math.max(
-        1,
-        hotelRooms + change
-    );
-
-    updateHotelSummary();
-}
-
-
-/* ===== CLOSE BOOTSTRAP MODAL ===== */
-
-function closeModal(modalId) {
-    const modalElement =
-        document.getElementById(modalId);
-
-    if (
-        !modalElement ||
-        typeof bootstrap === "undefined"
-    ) {
-        return;
-    }
-
-    const modal =
-        bootstrap.Modal.getInstance(
-            modalElement
-        );
-
-    if (modal) {
-        modal.hide();
-    }
-}
-
-
-/* ===== LOCATION SELECTION ===== */
-
-function updateLocation(
-    cityElementId,
-    detailElementId,
-    city,
-    detail,
-    modalId
-) {
-    const cityElement =
-        document.getElementById(
-            cityElementId
-        );
-
-    const detailElement =
-        document.getElementById(
-            detailElementId
-        );
-
-    if (cityElement) {
-        cityElement.textContent = city;
-    }
-
-    if (detailElement) {
-        detailElement.textContent =
-            detail;
-    }
-
-    closeModal(modalId);
-}
-
-function selectFrom(city, detail) {
-    updateLocation(
-        "fh-fromCity",
-        "fh-fromDetail",
-        city,
-        detail,
-        "fh-fromModal"
-    );
-}
-
-function selectTo(city, detail) {
-    updateLocation(
-        "fh-toCity",
-        "fh-toDetail",
-        city,
-        detail,
-        "fh-toModal"
-    );
-}
-
-function selectHotelDest(city, detail) {
-    updateLocation(
-        "fh-hotelCity",
-        "fh-hotelDetail",
-        city,
-        detail,
-        "fh-hotelDestinationModal"
-    );
-}
-
-function selectPickup(city, detail) {
-    updateLocation(
-        "fh-pickupCity",
-        "fh-pickupDetail",
-        city,
-        detail,
-        "fh-pickupModal"
-    );
-}
-
-function selectDropoff(city, detail) {
-    updateLocation(
-        "fh-dropoffCity",
-        "fh-dropoffDetail",
-        city,
-        detail,
-        "fh-dropoffModal"
-    );
-}
-
-
-/* ===== SWAP FLIGHT LOCATIONS ===== */
-
-function swapLocations() {
-    const fromCity =
-        document.getElementById(
-            "fh-fromCity"
-        );
-
-    const fromDetail =
-        document.getElementById(
-            "fh-fromDetail"
-        );
-
-    const toCity =
-        document.getElementById(
-            "fh-toCity"
-        );
-
-    const toDetail =
-        document.getElementById(
-            "fh-toDetail"
-        );
-
-    if (
-        !fromCity ||
-        !fromDetail ||
-        !toCity ||
-        !toDetail
-    ) {
-        return;
-    }
-
-    const temporaryCity =
-        fromCity.textContent;
-
-    const temporaryDetail =
-        fromDetail.textContent;
-
-    fromCity.textContent =
-        toCity.textContent;
-
-    fromDetail.textContent =
-        toDetail.textContent;
-
-    toCity.textContent =
-        temporaryCity;
-
-    toDetail.textContent =
-        temporaryDetail;
-}
-
-
-/* ===== SHOW STATIC RESULTS ===== */
-
-function showStaticResults(resultId) {
-    const resultsSection =
-        document.getElementById(
-            "fh-resultsSection"
-        );
-
-    const selectedResults =
-        document.getElementById(
-            resultId
-        );
-
-    if (
-        !resultsSection ||
-        !selectedResults
-    ) {
-        return;
-    }
-
-    document
-        .querySelectorAll(
-            ".fh-static-results"
-        )
-        .forEach(function (section) {
-            section.style.display =
-                "none";
-        });
-
-    resultsSection.style.display =
-        "block";
-
-    selectedResults.style.display =
-        "block";
-
-    resultsSection.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-    });
-}
-
-
-
-
-
-
-
-
-
 //    Tour Details Js 
 
 
 document.addEventListener("DOMContentLoaded", function () {
+    // Only the tour detail page carries this button, and this file is loaded by
+    // every page on the site, so it is looked up rather than assumed.
     const backTopButton = document.getElementById("tripBackTop");
+
+    if (!backTopButton) {
+        return;
+    }
 
     function updateBackTopButton() {
         backTopButton.classList.toggle("show", window.scrollY > 350);
@@ -2046,6 +1230,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let current = 0;
     let timer;
 
+    if (!slides.length) return;
+
     function showSlide(index) {
         current = (index + slides.length) % slides.length;
         slides.forEach((slide, i) => slide.classList.toggle('jsp-active', i === current));
@@ -2057,8 +1243,17 @@ document.addEventListener('DOMContentLoaded', function () {
         timer = setInterval(() => showSlide(current + 1), 5500);
     }
 
-    document.getElementById('jspPrev').addEventListener('click', () => { showSlide(current - 1); startAutoPlay(); });
-    document.getElementById('jspNext').addEventListener('click', () => { showSlide(current + 1); startAutoPlay(); });
+    const prevButton = document.getElementById('jspPrev');
+    const nextButton = document.getElementById('jspNext');
+
+    if (prevButton) {
+        prevButton.addEventListener('click', () => { showSlide(current - 1); startAutoPlay(); });
+    }
+
+    if (nextButton) {
+        nextButton.addEventListener('click', () => { showSlide(current + 1); startAutoPlay(); });
+    }
+
     dots.forEach((dot, i) => dot.addEventListener('click', () => { showSlide(i); startAutoPlay(); }));
     startAutoPlay();
 });
@@ -2338,3 +1533,908 @@ if (crdBookingForm) {
 /*END HOTEL DETAILS JS */
 
 
+
+/* ===== BOOKING SEARCH + CONFIRMATION ===== */
+/* Two pages share one set of controls and one set of rules:
+
+   - the search page (/book) holds one form per booking type and filters the
+     database server-side;
+   - the confirmation page (/bookings/create) holds exactly one service and the
+     details bookings.store validates.
+
+   Neither page decides a price or an availability answer: both ask the server,
+   and bookings.store validates everything again before writing anything. */
+(function () {
+    "use strict";
+
+    const searchForms = Array.prototype.slice.call(document.querySelectorAll(".fh-search-form"));
+    const dateInputs = Array.prototype.slice.call(document.querySelectorAll(".fh-date-input"));
+    const confirmForm = document.getElementById("bookingForm");
+
+    if (searchForms.length === 0 && dateInputs.length === 0 && !confirmForm) {
+        return;
+    }
+
+    const byId = (id) => document.getElementById(id);
+
+    const setText = (id, value) => {
+        const node = byId(id);
+
+        if (node) {
+            node.textContent = value;
+        }
+    };
+
+    const showRow = (id, visible) => {
+        const node = byId(id);
+
+        if (node) {
+            node.classList.toggle("d-none", !visible);
+        }
+    };
+
+    const formatMoney = (value, currency) => {
+        const amount = Number(value || 0);
+
+        try {
+            return new Intl.NumberFormat(undefined, {
+                style: "currency",
+                currency: currency || "NPR",
+                maximumFractionDigits: 2,
+            }).format(amount);
+        } catch (error) {
+            return amount.toFixed(2);
+        }
+    };
+
+    const shiftIsoDate = (isoDate, days) => {
+        if (!isoDate) {
+            return "";
+        }
+
+        const parts = String(isoDate).split("-");
+
+        if (parts.length !== 3) {
+            return isoDate;
+        }
+
+        // UTC throughout: a local-time Date would shift the day either way for
+        // anyone east or west of UTC.
+        const shifted = new Date(
+            Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+        );
+
+        shifted.setUTCDate(shifted.getUTCDate() + days);
+
+        return shifted.toISOString().slice(0, 10);
+    };
+
+    /* The floor is the day *after* the start date, not the start date itself,
+       because that is what BookingRulesService enforces server-side for a stay,
+       a rental and a tour alike. A picker offering the start date would let the
+       customer choose something the server is guaranteed to reject. */
+    const dayAfter = (isoDate) => (isoDate ? shiftIsoDate(isoDate, 1) : "");
+
+    const daysBetween = (startIso, endIso) => {
+        const start = Date.parse(startIso + "T00:00:00Z");
+        const end = Date.parse(endIso + "T00:00:00Z");
+
+        if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+            return 0;
+        }
+
+        return Math.round((end - start) / 86400000);
+    };
+
+    const setPeriodError = (scope, name, message) => {
+        const node = scope.querySelector('[data-period-error="' + name + '"]');
+
+        if (!node) {
+            return;
+        }
+
+        node.textContent = message;
+        node.classList.toggle("is-visible", Boolean(message));
+    };
+
+    /* Keep both dates freely editable. Raising the check-in moves the floor for
+       the check-out, but an end date that is now behind the floor is kept rather
+       than wiped: clearing it loses an answer the customer did not mean to lose
+       and reads as a field stuck on the check-in. The conflict is reported next
+       to the field instead, and the search or submission is blocked until it is
+       resolved.
+
+       Checking and publishing are separate. Checking is maintenance - the floor
+       has to be right whether or not anyone is looking - so it always runs.
+       Publishing is a claim about the customer, and it is only true once they have
+       actually been asked, so a page that has not asked stays silent. That is what
+       keeps an untouched form from opening by telling the customer they left
+       something empty.
+
+       Returns true when the pair is usable. */
+    function validatePeriod(scope, startInput, endInput, endDateRequired, options) {
+        const settings = options || {};
+        const floor = startInput && startInput.value ? dayAfter(startInput.value) : "";
+        const todayFloor = endInput.dataset.todayFloor || "";
+
+        /* todayFloor is the min the server rendered, captured before any of this
+           ran, so raising the floor for a picked start date can never become the
+           only remembered minimum. It comes from the markup rather than from
+           today() in here, so the browser cannot disagree with the server about
+           which day is today. */
+        endInput.min = floor && floor > todayFloor ? floor : todayFloor;
+
+        const startError = startInput && startInput.value && startInput.value < todayFloor
+            ? "This date has already passed."
+            : (!startInput || !startInput.value
+                ? (settings.missingStart || "A start date is required.")
+                : "");
+
+        const endError = endInput.value && floor && endInput.value < floor
+            ? (settings.orderError || "")
+            : (endDateRequired && !endInput.value
+                ? (settings.missingEnd || "An end date is required.")
+                : "");
+
+        if (settings.publish !== false) {
+            setPeriodError(scope, "start_date", startError);
+            setPeriodError(scope, "end_date", endError);
+        }
+
+        return !startError && !endError;
+    }
+
+    /* "Any duration" imposes no restriction. Choosing a length is a shortcut for
+       the drop-off date it describes, and the control then follows the dates, so
+       the two can never quietly disagree. A length that is not one of the offered
+       presets is simply "any duration": nothing is restricting it. */
+    function syncRentalDuration(scope) {
+        const select = scope.querySelector("[data-rental-duration]");
+        const startInput = scope.querySelector("[data-period-start]");
+        const endInput = scope.querySelector("[data-period-end]");
+
+        if (!select || !startInput || !endInput) {
+            return;
+        }
+
+        const days = daysBetween(startInput.value, endInput.value);
+
+        if (!days) {
+            select.value = "";
+            return;
+        }
+
+        const offered = Array.prototype.some.call(
+            select.options,
+            (option) => option.value === String(days)
+        );
+
+        select.value = offered ? String(days) : "";
+    }
+
+    function applyRentalDuration(scope) {
+        const select = scope.querySelector("[data-rental-duration]");
+        const startInput = scope.querySelector("[data-period-start]");
+        const endInput = scope.querySelector("[data-period-end]");
+
+        if (!select || !select.value || !startInput || !startInput.value || !endInput) {
+            return;
+        }
+
+        endInput.value = shiftIsoDate(startInput.value, Number(select.value));
+
+        announceDateChange(endInput);
+    }
+
+    /* The party size is a real, editable field in every scope. It is clamped to
+       what the control itself allows rather than pinned to a default, so a
+       four-seater car is never offered to a party of six. */
+    function syncPartyInput(scope) {
+        const input = scope.querySelector("[data-party-input]");
+
+        if (!input) {
+            return null;
+        }
+
+        const min = Number(input.min || 1);
+        const max = Number(input.max || min);
+        const value = Number(input.value);
+
+        if (!Number.isFinite(value) || value < min) {
+            input.value = min;
+        } else if (max >= min && value > max) {
+            input.value = max;
+        }
+
+        return input;
+    }
+
+    /* The date cards.
+
+       A date field is presented the way a traveller reads one - a small uppercase
+       label over a formatted day, "Fri, 22 Mar" - while the control itself stays
+       a real <input type="date"> stretched invisibly across the whole card.
+       Nothing here replaces the browser calendar: a click anywhere on the card
+       focuses that real input and asks it to show its own picker, and the ISO
+       value it holds is what the search, the quote and the booking all carry on.
+       Only the printed day is ours; the date itself never is. */
+    const DATE_DISPLAY_PLACEHOLDER = "Select date";
+
+    function formatDateForDisplay(isoDate) {
+        const parts = String(isoDate || "").split("-");
+
+        if (parts.length !== 3) {
+            return "";
+        }
+
+        // UTC for the same reason shiftIsoDate is: a local-time Date would print
+        // the wrong day, or the wrong weekday, either side of UTC.
+        const parsed = new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
+
+        if (Number.isNaN(parsed.getTime())) {
+            return "";
+        }
+
+        try {
+            const printed = new Intl.DateTimeFormat("en-GB", {
+                weekday: "short",
+                day: "2-digit",
+                month: "short",
+                timeZone: "UTC",
+            }).formatToParts(parsed);
+
+            const piece = (type) => {
+                const found = printed.find((part) => part.type === type);
+
+                return found ? found.value : "";
+            };
+
+            // Joined here rather than left to the locale, because a locale decides
+            // its own separator and not every one of them puts a comma there. The
+            // server renders the same "Fri, 22 Mar", and a first paint that says
+            // something else would be a visible jump.
+            return [piece("weekday"), piece("day"), piece("month")].filter(Boolean).join(", ");
+        } catch (error) {
+            return "";
+        }
+    }
+
+    /* The browser's own calendar, opened by the input itself. Focus comes first
+       because a click that does not focus never counts as the user gesture
+       showPicker() needs, and a browser that refuses the call leaves the focused
+       input to open it by itself. A failure here must never break the field. */
+    function openNativeDatePicker(input) {
+        input.focus();
+
+        if (typeof input.showPicker !== "function") {
+            return;
+        }
+
+        try {
+            input.showPicker();
+        } catch (error) {
+            return;
+        }
+    }
+
+    function enhanceDateCard(input) {
+        const card = input.closest("[data-date-field]");
+        const display = card ? card.querySelector("[data-date-display]") : null;
+
+        if (!display) {
+            return;
+        }
+
+        const paint = () => {
+            const formatted = formatDateForDisplay(input.value);
+
+            display.textContent = formatted || display.dataset.datePlaceholder || DATE_DISPLAY_PLACEHOLDER;
+            card.classList.toggle("is-empty", !formatted);
+        };
+
+        // "input" so the day changes the moment the calendar commits it, "change"
+        // so a value arrived any other way still repaints.
+        input.addEventListener("input", paint);
+        input.addEventListener("change", paint);
+
+        /* The invisible input already sits over the whole card, so a click almost
+           always lands on it directly. This covers what does not: the label, and
+           a browser that will not open the picker from a click on the input. */
+        card.addEventListener("click", function () {
+            openNativeDatePicker(input);
+        });
+
+        paint();
+    }
+
+    /* A date written by the rental-length shortcut was never picked, and a value
+       assigned in script fires no event of its own. Announcing it repaints the card
+       and re-checks the period exactly as if the customer had chosen the day. */
+    function announceDateChange(input) {
+        if (!input) {
+            return;
+        }
+
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    /* The booking summary popup on the search page.
+
+       Wired here, ahead of the confirmation page's own block, because that block
+       is about #bookingForm and the search page - where this popup lives - has no
+       booking form at all. Nothing is lost by saying so in one place: the two
+       pages share the date cards and the helpers above, and each takes only the
+       wiring it has the markup for.
+
+       Every number and date it shows comes from the server's own summary of the
+       result that was clicked, carried in the page's JSON payload. Nothing is
+       recalculated here, and bookings.store re-validates all of it before
+       anything is written. */
+    const summaryModal = document.getElementById("fh-bookingSummaryModal");
+    const summaryForm = document.getElementById("fh-bookingSummaryForm");
+    const summaryPayload = document.getElementById("fh-bookingSummaries");
+
+    if (summaryModal && summaryForm && summaryPayload) {
+        let summaries = {};
+
+        try {
+            summaries = JSON.parse(summaryPayload.textContent) || {};
+        } catch (error) {
+            summaries = {};
+        }
+
+        const summaryPart = (name) => summaryModal.querySelector("[data-summary-" + name + "]");
+        const summaryRows = summaryPart("rows");
+        const summarySubmit = summaryPart("submit");
+        const summarySubmitLabel = summaryPart("submit-label");
+        const summaryNotice = summaryPart("notice");
+
+        const writeSummaryField = (name, value) => {
+            const field = summaryForm.querySelector('[data-summary-field="' + name + '"]');
+
+            if (field) {
+                field.value = value === null || value === undefined ? "" : String(value);
+            }
+        };
+
+        const renderSummaryRows = (rows) => {
+            summaryRows.textContent = "";
+
+            (rows || []).forEach(function (row) {
+                const line = document.createElement("div");
+                line.className = "fh-quote-row";
+
+                const label = document.createElement("span");
+                label.textContent = row.label;
+
+                const value = document.createElement("span");
+                value.textContent = row.value;
+
+                line.appendChild(label);
+                line.appendChild(value);
+                summaryRows.appendChild(line);
+            });
+        };
+
+        summaryModal.addEventListener("show.bs.modal", function (event) {
+            const trigger = event.relatedTarget;
+            const summary = trigger ? summaries[trigger.getAttribute("data-booking-summary")] : null;
+
+            /* Without a summary there is nothing to confirm, so the result's own
+               link is the way through. The show is cancelled rather than closed
+               afterwards: this event fires while the popup is still being opened,
+               and Bootstrap cannot hide a modal that has not finished being shown,
+               so a late close left the empty popup on screen until the next page had
+               finished loading. Cancelling stops it being drawn at all, and the
+               navigation below is ours to make because the modal trigger already
+               cancelled the link. */
+            if (!summary) {
+                event.preventDefault();
+
+                if (trigger && trigger.getAttribute("href")) {
+                    window.location.assign(trigger.href);
+                }
+
+                return;
+            }
+
+            summaryPart("heading").textContent = summary.popupTitle;
+            summaryPart("service").textContent = summary.serviceTitle;
+
+            renderSummaryRows(summary.rows);
+
+            summaryPart("unit").textContent = summary.unit;
+            summaryPart("subtotal").textContent = summary.subtotal;
+            summaryPart("note").textContent = summary.note;
+            summaryPart("discount-label").textContent = summary.discountLabel || "Discount";
+            summaryPart("discount").textContent = "\u2212" + (summary.discount || "");
+            summaryPart("tax-label").textContent = summary.taxLabel;
+            summaryPart("tax").textContent = summary.tax;
+            summaryPart("charge-label").textContent = summary.chargeLabel;
+            summaryPart("charge").textContent = summary.charge;
+            summaryPart("total").textContent = summary.total;
+
+            summaryPart("discount-row").classList.toggle("d-none", !summary.hasDiscount);
+            summaryPart("tax-row").classList.toggle("d-none", !summary.hasTax);
+            summaryPart("charge-row").classList.toggle("d-none", !summary.hasCharge);
+
+            writeSummaryField("bookingType", summary.bookingType);
+            writeSummaryField("serviceId", summary.serviceId);
+            writeSummaryField("startDate", summary.startDate);
+            writeSummaryField("endDate", summary.endDate);
+            writeSummaryField("travelers", summary.travelers);
+            writeSummaryField("submissionToken", summary.submissionToken);
+
+            summaryNotice.classList.toggle("d-none", summary.available);
+            summaryNotice.textContent = summary.available ? "" : summary.message;
+
+            summarySubmit.disabled = !summary.available;
+            summarySubmitLabel.textContent = summary.available ? summarySubmitLabel.dataset.defaultLabel : "Unavailable";
+        });
+
+        summaryForm.addEventListener("submit", function () {
+            // A second click cannot reach the server: the button is disabled on
+            // the first one, and the submission token makes any replay resolve back to
+            // the booking that token already created.
+            summarySubmit.disabled = true;
+            summarySubmitLabel.textContent = "Processing...";
+        });
+
+        summaryModal.addEventListener("hidden.bs.modal", function () {
+            summarySubmit.disabled = false;
+            summarySubmitLabel.textContent = summarySubmitLabel.dataset.defaultLabel;
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Before anything reads a date, so the cards are already telling the truth.
+        dateInputs.forEach(enhanceDateCard);
+
+        searchForms.forEach(function (form) {
+            const startInput = form.querySelector("[data-period-start]");
+            const endInput = form.querySelector("[data-period-end]");
+            const panel = form.closest("[data-booking-type]");
+            const endDateRequired = panel ? panel.getAttribute("data-booking-type") !== "tour" : true;
+
+            /* The wording the server would answer a period with, named by the
+               tab, so nothing here has to phrase the rule a second way. */
+            const orderError = panel ? (panel.getAttribute("data-end-date-order-error") || "") : "";
+
+            if (endInput) {
+                endInput.dataset.todayFloor = endInput.min || "";
+            }
+
+            const revalidate = function (publish) {
+                if (startInput && endInput) {
+                    validatePeriod(form, startInput, endInput, endDateRequired, {
+                        publish: publish,
+                        missingStart: "A start date is required.",
+                        missingEnd: "An end date is required.",
+                        orderError: orderError,
+                    });
+                }
+
+                syncRentalDuration(form);
+                syncPartyInput(form);
+            };
+
+            /* The opening pass keeps the cards honest - the floor still has to be
+               right before anyone reads a day - but reports nothing. An empty search
+               form has not been answered wrongly, it has not been answered yet, and
+               greeting a first-time visitor with a required-date error describes the
+               page rather than anything they did. */
+            revalidate(false);
+
+            [startInput, endInput].forEach(function (input) {
+                if (!input) {
+                    return;
+                }
+
+                input.addEventListener("change", function () {
+                    // The rental length describes the pair, so recomputing it last
+                    // means picking a duration then a pick-up date always agrees.
+                    if (input === startInput) {
+                        syncRentalDuration(form);
+                    }
+
+                    revalidate(true);
+                });
+            });
+
+            const durationSelect = form.querySelector("[data-rental-duration]");
+
+            if (durationSelect) {
+                durationSelect.addEventListener("change", function () {
+                    applyRentalDuration(form);
+                    revalidate(true);
+                });
+            }
+
+            const partyInput = form.querySelector("[data-party-input]");
+
+            if (partyInput) {
+                partyInput.addEventListener("change", function () {
+                    syncPartyInput(form);
+                });
+            }
+
+            /* An unusable period is stopped here rather than round-tripped to a
+               server error, but the server still validates it: this only saves a
+               pointless request. Submitting is the customer asking, so this is
+               where they are told. */
+            form.addEventListener("submit", function (event) {
+                if (!startInput || !endInput) {
+                    return;
+                }
+
+                if (!validatePeriod(form, startInput, endInput, endDateRequired, {
+                    missingStart: "A start date is required.",
+                    missingEnd: "An end date is required.",
+                    orderError: orderError,
+                })) {
+                    event.preventDefault();
+                }
+            });
+        });
+
+        /* The confirmation page from here down: its form, its live quote and its
+           review popup. The search page shares the date cards and the popup above
+           but has none of these, so this is where the script stops for it. */
+        if (!confirmForm) {
+            return;
+        }
+
+        const typeInput = byId("bookingType");
+        const serviceInput = byId("serviceId");
+        const submitButton = byId("bookingSubmit");
+        const reviewButton = byId("reviewBookingButton");
+        const policyCheckbox = byId("policy_accepted");
+        const confirmModal = byId("fh-confirmBookingModal");
+        const blocker = byId("fh-confirmBlocker");
+        const visibleStart = confirmForm.querySelector("[data-period-start]");
+        const visibleEnd = confirmForm.querySelector("[data-period-end]");
+        const partyInput = confirmForm.querySelector("[data-party-input]");
+        const rentalDuration = confirmForm.querySelector("[data-rental-duration]");
+        const endDateRequired = typeInput ? typeInput.value !== "tour" : true;
+
+        /* Whether the last quote the server gave us described a bookingable
+           combination of dates and party size. Both the Review button and Confirm
+           Booking are gated on it, so the two can never disagree about whether this
+           booking can go ahead. */
+        let quoteReady = false;
+
+        /* Whether this period has been asked about yet.
+
+           The server answers it for a page that arrived with dates or with errors
+           from a failed submit; from here on, touching a date control counts. It
+           is the line between "waiting to be asked" and "asked and unanswered",
+           and therefore the only thing that decides whether a missing date is a
+           fault worth reporting or simply the next question. */
+        let periodAttempted = confirmForm.getAttribute("data-dates-attempted") === "true";
+
+        /* Named per booking type by the server, so the script asks a stay for a
+           check-in and a package for a departure without hardcoding either. */
+        const missingDates = {
+            start: confirmForm.getAttribute("data-missing-start") || "",
+            end: confirmForm.getAttribute("data-missing-end") || "",
+        };
+
+        /* The same reasoning for the end-date rule: the page is told what the
+           server calls it, so a conflict on the page is worded exactly as the
+           submission that follows would have worded it. */
+        const orderError = confirmForm.getAttribute("data-end-date-order-error") || "";
+
+        if (visibleEnd) {
+            visibleEnd.dataset.todayFloor = visibleEnd.min || "";
+        }
+
+        const scope = {
+            querySelector: (selector) => confirmForm.querySelector(selector),
+        };
+
+        function mirrorPeriod() {
+            const canonicalStart = byId("start_date");
+            const canonicalEnd = byId("end_date");
+
+            if (canonicalStart && visibleStart) {
+                canonicalStart.value = visibleStart.value;
+            }
+
+            if (canonicalEnd && visibleEnd) {
+                canonicalEnd.value = visibleEnd.value;
+            }
+
+            // The popup reads the dates back to the customer, so the same mirror
+            // that feeds the server also feeds the review.
+            if (visibleStart) {
+                setText("fh-periodStart", formatDateForDisplay(visibleStart.value) || DATE_DISPLAY_PLACEHOLDER);
+            }
+
+            if (visibleEnd) {
+                setText("fh-periodEnd", formatDateForDisplay(visibleEnd.value) || DATE_DISPLAY_PLACEHOLDER);
+            }
+        }
+
+        function mirrorParty() {
+            const canonical = byId("travelers");
+            const input = syncPartyInput(scope);
+
+            if (canonical && input) {
+                canonical.value = input.value;
+            }
+
+            if (input) {
+                setText("fh-periodParty", input.value);
+            }
+        }
+
+        function clearQuote(message) {
+            setText("fh-quoteNote", message);
+            setText("fh-quoteUnit", "");
+            setText("fh-quoteSubtotal", "");
+            setText("fh-quoteTotal", "");
+            ["fh-quoteDiscountRow", "fh-quoteTaxRow", "fh-quoteChargeRow", "fh-quoteTotalRow"].forEach((id) => showRow(id, false));
+            setBlocker(message);
+        }
+
+        function renderQuote(quote) {
+            const currency = quote.currency;
+            const unit = formatMoney(quote.unit_price, currency);
+            const priced = Number(quote.quantity) > 0;
+
+            setText("fh-quoteUnit", priced ? unit + " " + (quote.unit_label || "") : "");
+            setText("fh-quoteSubtotal", priced ? formatMoney(quote.subtotal, currency) : "");
+            setText("fh-quoteNote", quote.recalc_note || "");
+            setText(
+                "fh-quoteDiscountLabel",
+                quote.discount_description
+                    ? "Discount (" + quote.discount_description + ")"
+                    : "Discount"
+            );
+            setText("fh-quoteDiscount", "\u2212" + formatMoney(quote.discount, currency));
+            setText("fh-quoteTaxLabel", "Tax (" + Number(quote.tax_rate).toFixed(2) + "%)");
+            setText("fh-quoteTax", formatMoney(quote.tax_amount, currency));
+            setText(
+                "fh-quoteChargeLabel",
+                "Service charge (" + Number(quote.service_charge_rate).toFixed(2) + "%)"
+            );
+            setText("fh-quoteCharge", formatMoney(quote.service_charge, currency));
+            setText("fh-quoteTotal", formatMoney(quote.total, currency));
+
+            showRow("fh-quoteDiscountRow", !!quote.discount_applied);
+            showRow("fh-quoteTaxRow", Number(quote.tax_rate) > 0);
+            showRow("fh-quoteChargeRow", Number(quote.service_charge_rate) > 0);
+            showRow("fh-quoteTotalRow", true);
+            setBlocker("");
+        }
+
+        function setBlocker(message) {
+            if (blocker) {
+                blocker.textContent = message || "";
+                blocker.classList.toggle("d-none", !message);
+            }
+        }
+
+        /* The two gates on the booking, in one place: the dates and party size have
+           to describe something bookable, and the policy has to be accepted. The
+           Review button only needs the first, because opening the popup is how the
+           customer reads the second. */
+        function syncConfirmState() {
+            /* Review is the question, so it stays pressable until it has been asked
+               and refused. Gating it on a quote it cannot have yet would leave a
+               form with no way to find out what it wants. */
+            if (reviewButton) {
+                reviewButton.disabled = periodAttempted && !quoteReady;
+            }
+
+            if (submitButton) {
+                submitButton.disabled = !quoteReady || !(policyCheckbox && policyCheckbox.checked);
+            }
+        }
+
+        function setSubmitState(enabled, message) {
+            quoteReady = enabled;
+            syncConfirmState();
+
+            setText("bookingPeriodStatus", message || "");
+        }
+
+        let quoteTimer = null;
+
+        async function runQuote() {
+            if (!typeInput || !serviceInput) {
+                return;
+            }
+
+            if (visibleStart && visibleEnd) {
+                const periodUsable = validatePeriod(scope, visibleStart, visibleEnd, endDateRequired, {
+                    publish: periodAttempted,
+                    missingStart: missingDates.start,
+                    missingEnd: missingDates.end,
+                    orderError: orderError,
+                });
+
+                if (!periodUsable) {
+                    mirrorPeriod();
+
+                    /* Said only once the customer has actually been asked. Before
+                       that the dates are simply not chosen yet, which is the normal
+                       condition of a fresh form and not an answer to be corrected.
+                       The reason is left off the button as well: the field already
+                       says which date is the problem, and a second sentence about it
+                       beside the button only repeats the field. */
+                    if (periodAttempted) {
+                        setSubmitState(false, "");
+                        clearQuote("These dates cannot be booked yet.");
+                    } else {
+                        syncConfirmState();
+                    }
+
+                    return;
+                }
+            }
+
+            mirrorPeriod();
+            mirrorParty();
+
+            const tokenField = confirmForm.querySelector('input[name="_token"]');
+            const metaToken = document.querySelector('meta[name="csrf-token"]');
+
+            try {
+                const response = await fetch(confirmForm.getAttribute("data-quote-url"), {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                        "X-CSRF-TOKEN": (metaToken && metaToken.content) || (tokenField && tokenField.value) || "",
+                    },
+                    body: JSON.stringify({
+                        booking_type: typeInput.value,
+                        service_id: serviceInput.value,
+                        start_date: byId("start_date") ? byId("start_date").value : null,
+                        end_date: byId("end_date") ? byId("end_date").value : null,
+                        travelers: byId("travelers") ? byId("travelers").value : null,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.available || !data.quote) {
+                    const reason =
+                        data.reason ||
+                        (data.errors ? Object.values(data.errors).flat()[0] : null) ||
+                        "That service is not available for the selected dates.";
+
+                    clearQuote(reason);
+                    setSubmitState(false, reason);
+                    return;
+                }
+
+                renderQuote(data.quote);
+                setSubmitState(true, "");
+            } catch (error) {
+                clearQuote("We could not refresh the price just now. Please try again.");
+                setSubmitState(false, "We could not confirm availability just now. Please try again.");
+            }
+        }
+
+        function scheduleQuote() {
+            window.clearTimeout(quoteTimer);
+            quoteTimer = window.setTimeout(runQuote, 300);
+        }
+
+        [visibleStart, visibleEnd].forEach(function (input) {
+            if (!input) {
+                return;
+            }
+
+            input.addEventListener("change", function () {
+                /* Reaching for a date is answering the question, so from here on the
+                   period is one the customer is expected to have filled in. */
+                periodAttempted = true;
+
+                if (input === visibleStart) {
+                    syncRentalDuration(scope);
+                }
+
+                scheduleQuote();
+            });
+        });
+
+        if (rentalDuration) {
+            rentalDuration.addEventListener("change", function () {
+                periodAttempted = true;
+                applyRentalDuration(scope);
+                scheduleQuote();
+            });
+        }
+
+        if (partyInput) {
+            partyInput.addEventListener("change", scheduleQuote);
+        }
+
+        if (policyCheckbox) {
+            policyCheckbox.addEventListener("change", syncConfirmState);
+        }
+
+        /* Opening the popup is the review, so the figures it shows must be the ones the
+           server gives right now - not the ones left over from the last edit the
+           customer made. Re-quoting on every open keeps the popup honest even when
+           someone else took the last room in between. */
+        if (confirmModal) {
+            confirmModal.addEventListener("show.bs.modal", runQuote);
+
+            /* A dismissed attempt re-arms Confirm Booking, because the popup
+               closing is the customer changing their mind and the next open has to
+               earn the button again from a fresh quote. Their typed details stay. */
+            confirmModal.addEventListener("hidden.bs.modal", function () {
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
+            });
+        }
+
+        /* Review is the moment the period gets asked for, so the check belongs on
+           the press rather than on a timer. Pressing it either opens the review of
+           a period that holds up, or explains itself beside the date that does
+           not - and either way the customer learns it by asking. */
+        if (reviewButton) {
+            reviewButton.addEventListener("click", function (event) {
+                periodAttempted = true;
+
+                if (!visibleStart || !visibleEnd) {
+                    return;
+                }
+
+                const periodUsable = validatePeriod(scope, visibleStart, visibleEnd, endDateRequired, {
+                    missingStart: missingDates.start,
+                    missingEnd: missingDates.end,
+                    orderError: orderError,
+                });
+
+                if (periodUsable) {
+                    scheduleQuote();
+                    return;
+                }
+
+                /* Refusing the default keeps the popup shut. A review of dates that
+                   cannot be booked would be a review of nothing. */
+                event.preventDefault();
+                mirrorPeriod();
+                setSubmitState(false, "");
+                clearQuote("These dates cannot be booked yet.");
+
+                /* Focus goes to the first date still missing an answer, so the next
+                   thing they do is open the calendar that needs opening. */
+                const firstUnanswered = !visibleStart.value
+                    ? visibleStart
+                    : (endDateRequired && !visibleEnd.value ? visibleEnd : null);
+
+                if (firstUnanswered) {
+                    firstUnanswered.focus();
+                }
+            });
+        }
+
+        confirmForm.addEventListener("submit", function (event) {
+            if (visibleStart && visibleEnd && !validatePeriod(scope, visibleStart, visibleEnd, endDateRequired, {
+                missingStart: missingDates.start,
+                missingEnd: missingDates.end,
+                orderError: orderError,
+            })) {
+                event.preventDefault();
+            }
+        });
+
+        mirrorPeriod();
+        mirrorParty();
+        syncConfirmState();
+
+        /* Nothing is quoted until there are dates to quote. Asking the server about
+           a period the customer has not chosen cannot succeed, and the failure it
+           answers with is exactly what used to greet them on arrival. */
+        if (visibleStart && visibleStart.value) {
+            scheduleQuote();
+        }
+    });
+})();

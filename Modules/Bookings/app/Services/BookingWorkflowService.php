@@ -74,6 +74,9 @@ class BookingWorkflowService
                     'tax_amount' => $quote['tax_amount'],
                     'service_charge' => $quote['service_charge'],
                     'discount' => $quote['discount'],
+                    'discount_type' => $quote['discount_type'],
+                    'discount_value' => $quote['discount_value'],
+                    'discount_label' => $quote['discount_label'],
                     'total_amount' => $quote['total'],
                     'currency' => $quote['currency'],
                     'paid_amount' => '0.00',
@@ -91,8 +94,11 @@ class BookingWorkflowService
             $this->recordHistory($booking, 'availability_checked', 'pending', 'pending', 'system', null, ['available' => true]);
             $this->recordHistory($booking, 'quoted', 'pending', 'pending', 'system', null, ['total' => $quote['total']]);
 
-            $this->notifyCustomer($booking, 'Booking received', "Your booking {$booking->booking_reference} has been received and is waiting for confirmation.", route('bookings.show', $booking->booking_reference));
-            $this->notifyAdmins($booking, 'New booking request', "New {$booking->booking_type_label} booking {$booking->booking_reference} ({$booking->service_title}) is awaiting your review.", route('admin.bookings.show', $booking));
+            // Both messages are built from the row that was just written, so the
+            // bell names the service and reference the customer actually booked
+            // rather than anything written into the template.
+            $this->notifyCustomer($booking, 'Booking received', "{$booking->service_title} ({$booking->booking_type_label}): booking {$booking->booking_reference} has been received and is awaiting confirmation.", route('bookings.show', $booking->booking_reference));
+            $this->notifyAdmins($booking, 'New booking request', "{$booking->service_title} ({$booking->booking_type_label}) - booking {$booking->booking_reference} is awaiting your review.", route('admin.bookings.show', $booking));
 
             return ['booking' => $booking, 'payment' => $payment];
         });
@@ -511,27 +517,39 @@ class BookingWorkflowService
         abort_unless(in_array($booking->status, ['pending', 'confirmed', 'payment_pending'], true), 422, 'The price can only be set before the booking is paid.');
 
         $currency = BookingSetting::getWithDefault('currency');
-        $taxRate = (float) BookingSetting::getWithDefault('tax_rate');
-        $serviceChargeRate = (float) BookingSetting::getWithDefault('service_charge_rate');
+        $pricing = (new PriceCalculator)->priceSubtotal($basePrice, (string) $currency);
 
-        $tax = Money::percent($basePrice, $taxRate);
-        $serviceCharge = Money::percent($basePrice, $serviceChargeRate);
-        $total = Money::add(Money::add(Money::round($basePrice), $tax), $serviceCharge);
-
-        $booking->base_price = Money::round($basePrice);
-        $booking->amount = $total;
-        $booking->total_amount = $total;
-        $booking->tax_rate = $taxRate;
-        $booking->service_charge_rate = $serviceChargeRate;
-        $booking->tax_amount = $tax;
-        $booking->service_charge = $serviceCharge;
+        $booking->base_price = $pricing['subtotal'];
+        $booking->amount = $pricing['total'];
+        $booking->total_amount = $pricing['total'];
+        $booking->tax_rate = $pricing['tax_rate'];
+        $booking->service_charge_rate = $pricing['service_charge_rate'];
+        $booking->tax_amount = $pricing['tax_amount'];
+        $booking->service_charge = $pricing['service_charge'];
+        $this->applyDiscountSnapshot($booking, $pricing);
         $booking->save();
 
         $this->snapshotPaymentPlan($booking);
 
-        $this->recordHistory($booking, 'quoted', $booking->status, $booking->status, 'admin', $note, ['total' => $total]);
+        $this->recordHistory($booking, 'quoted', $booking->status, $booking->status, 'admin', $note, ['total' => $pricing['total']]);
 
         return ['booking' => $booking];
+    }
+
+    /**
+     * Copy the discount a price was calculated with onto the booking.
+     *
+     * The booking keeps how the discount was configured, so its details still
+     * read correctly after the global discount has been changed or removed.
+     *
+     * @param  array<string, mixed>  $pricing
+     */
+    protected function applyDiscountSnapshot(Booking $booking, array $pricing): void
+    {
+        $booking->discount = $pricing['discount'];
+        $booking->discount_type = $pricing['discount_type'];
+        $booking->discount_value = $pricing['discount_value'];
+        $booking->discount_label = $pricing['discount_label'];
     }
 
     /**
@@ -675,6 +693,7 @@ class BookingWorkflowService
             $booking->service_charge_rate = $quote['service_charge_rate'];
             $booking->tax_amount = $quote['tax_amount'];
             $booking->service_charge = $quote['service_charge'];
+            $this->applyDiscountSnapshot($booking, $quote);
             $booking->total_amount = $quote['total'];
             $booking->amount = $quote['total'];
             $booking->save();

@@ -32,50 +32,54 @@
         <!-- Search Bar -->
         <div class="amc-searchbar">
             <div class="container">
-                <div class="amc-searchbox">
+                <form class="amc-searchbox" method="GET" action="{{ route('transport') }}" id="amcSearchForm">
                     <div class="row g-3 align-items-end">
                         <div class="col-12 mb-2">
                             <span class="text-black fw-bold" style="font-size: 0.9rem;"><i
                                     class="bi bi-search me-2 text-black"></i>FIND YOUR NEXT VEHICLE</span>
                         </div>
                         <div class="col-6 col-lg">
-                            <label class="amc-search-label">Brand</label>
-                            <select class="amc-searchfield" id="amcFilterMake">
+                            <label class="amc-search-label" for="amcFilterMake">Brand</label>
+                            <select class="amc-searchfield" id="amcFilterMake" name="brand">
                                 <option value="">Any Brand</option>
                                 @foreach ($brands as $brand)
-                                    <option value="{{ $brand }}">{{ $brand }}</option>
+                                    <option value="{{ $brand }}"
+                                        @selected(($filters['brand'] ?? null) === $brand)>{{ $brand }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-6 col-lg">
-                            <label class="amc-search-label">Model</label>
-                            <select class="amc-searchfield" id="amcFilterModel">
+                            <label class="amc-search-label" for="amcFilterModel">Model</label>
+                            <select class="amc-searchfield" id="amcFilterModel" name="model">
                                 <option value="">Any Model</option>
                                 @foreach ($models as $model)
-                                    <option value="{{ $model }}">{{ $model }}</option>
+                                    <option value="{{ $model }}"
+                                        @selected(($filters['model'] ?? null) === $model)>{{ $model }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-6 col-lg">
-                            <label class="amc-search-label">Vehicle Type</label>
-                            <select class="amc-searchfield" id="amcFilterBody">
+                            <label class="amc-search-label" for="amcFilterBody">Vehicle Type</label>
+                            <select class="amc-searchfield" id="amcFilterBody" name="vehicle_type">
                                 <option value="">Any Type</option>
                                 @foreach ($types as $type)
-                                    <option value="{{ $type }}">{{ $typeLabels[$type] }}</option>
+                                    <option value="{{ $type }}"
+                                        @selected(($filters['vehicle_type'] ?? null) === $type)>{{ $typeLabels[$type] }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-6 col-lg">
-                            <label class="amc-search-label">Max Price</label>
-                            <select class="amc-searchfield" id="amcFilterPrice">
+                            <label class="amc-search-label" for="amcFilterPrice">Max Price</label>
+                            <select class="amc-searchfield" id="amcFilterPrice" name="max_price">
                                 <option value="">Any Price</option>
                                 @foreach ($priceOptions as $option)
-                                    <option value="{{ $option }}">Under Rs.{{ number_format($option, 0, '.', ',') }}</option>
+                                    <option value="{{ $option }}"
+                                        @selected((string) ($filters['max_price'] ?? '') === (string) $option)>Under Rs.{{ number_format($option, 0, '.', ',') }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-12 col-lg-auto">
-                            <button class="amc-searchbtn" id="amcSearchBtn"><i
+                            <button type="submit" class="amc-searchbtn" id="amcSearchBtn"><i
                                     class="bi bi-search me-2"></i>SEARCH</button>
                         </div>
                         <div class="col-12 text-end">
@@ -83,7 +87,7 @@
                                     class="bi bi-chevron-down"></i></a>
                         </div>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     </section>
@@ -94,9 +98,16 @@
             <div class="amc-sectionhead amc-fadeup">
                 <h2 class="amc-sectiontitle text-black">RENT VEHICLES</h2>
                 <ul class="amc-filterlist">
-                    <li><button class="active" data-amc-filter="all">All Vehicles</button></li>
+                    <li>
+                        <a class="{{ blank($filters['vehicle_type'] ?? null) ? 'active' : '' }}"
+                            href="{{ route('transport', array_filter($filters, fn ($key) => $key !== 'vehicle_type', ARRAY_FILTER_USE_KEY)) }}">All
+                            Vehicles</a>
+                    </li>
                     @foreach ($types as $type)
-                        <li><button data-amc-filter="{{ $type }}">{{ $typeLabels[$type] }}s</button></li>
+                        <li>
+                            <a class="{{ ($filters['vehicle_type'] ?? null) === $type ? 'active' : '' }}"
+                                href="{{ route('transport', array_merge(array_filter($filters, fn ($key) => $key !== 'vehicle_type', ARRAY_FILTER_USE_KEY), ['vehicle_type' => $type])) }}">{{ $typeLabels[$type] }}s</a>
+                        </li>
                     @endforeach
                 </ul>
             </div>
@@ -106,7 +117,11 @@
                     @include('frontend.partials.vehicle-card', ['vehicle' => $vehicle])
                 @empty
                     <div class="col-12 text-center text-muted py-4">
-                        Vehicles are coming soon.
+                        @if (array_filter($filters))
+                            No vehicles match your search. Please try a different brand, model, type or price.
+                        @else
+                            Vehicles are coming soon.
+                        @endif
                     </div>
                 @endforelse
             </div>

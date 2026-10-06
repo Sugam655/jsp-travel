@@ -9,6 +9,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Modules\Bookings\Models\Booking;
 use Modules\Bookings\Models\BookingSetting;
+use Modules\Bookings\Services\DiscountResolver;
 use Modules\Bookings\Services\PaymentCalculationService;
 
 class BookingSettingController extends Controller
@@ -20,6 +21,7 @@ class BookingSettingController extends Controller
     {
         return view('bookings::admin.bookings.settings', [
             'settings' => BookingSetting::DEFAULTS,
+            'discountTypes' => DiscountResolver::TYPE_LABELS,
             'current' => collect(BookingSetting::DEFAULTS)->mapWithKeys(
                 fn ($default, $key) => [$key => BookingSetting::getWithDefault($key)]
             ),
@@ -31,10 +33,25 @@ class BookingSettingController extends Controller
      */
     public function update(Request $request): RedirectResponse
     {
+        $discountEnabled = $request->boolean('discount_enabled');
+        $discountType = $request->input('discount_type', BookingSetting::DEFAULTS['discount_type']);
+
         $validated = $request->validate([
             'currency' => ['required', 'alpha', 'max:3'],
             'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'service_charge_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'discount_enabled' => ['sometimes', 'boolean'],
+            'discount_type' => ['sometimes', Rule::in(DiscountResolver::TYPES)],
+            // A percentage above 100 would invert the price, so it is only
+            // bounded when it is the basis being used. A fixed amount has no
+            // ceiling of its own: PriceCalculator caps it at the subtotal.
+            'discount_value' => [
+                'sometimes',
+                'numeric',
+                'min:0',
+                Rule::when($discountType === 'percentage', ['max:100']),
+            ],
+            'discount_label' => ['nullable', 'string', 'max:60'],
             'booking_approval_required' => ['sometimes', 'boolean'],
             'payment_deadline_hours' => ['required', 'integer', 'min:1', 'max:720'],
             'max_booking_horizon' => ['required', 'integer', 'min:1', 'max:730'],
@@ -59,6 +76,22 @@ class BookingSettingController extends Controller
         BookingSetting::set('currency', strtoupper((string) $validated['currency']));
         BookingSetting::set('tax_rate', (float) $validated['tax_rate']);
         BookingSetting::set('service_charge_rate', (float) $validated['service_charge_rate']);
+        BookingSetting::set('discount_enabled', $discountEnabled);
+
+        // A submission that never carried the discount fields leaves whatever
+        // discount is already configured alone, rather than quietly resetting
+        // an offer because an older form was posted.
+        if (array_key_exists('discount_type', $validated)) {
+            BookingSetting::set('discount_type', $validated['discount_type']);
+        }
+
+        if (array_key_exists('discount_value', $validated)) {
+            BookingSetting::set('discount_value', (float) $validated['discount_value']);
+        }
+
+        if (array_key_exists('discount_label', $request->input())) {
+            BookingSetting::set('discount_label', DiscountResolver::normaliseLabel($request->input('discount_label')));
+        }
         BookingSetting::set('booking_approval_required', (bool) ($validated['booking_approval_required'] ?? false));
         BookingSetting::set('payment_deadline_hours', (int) $validated['payment_deadline_hours']);
         BookingSetting::set('max_booking_horizon', (int) $validated['max_booking_horizon']);

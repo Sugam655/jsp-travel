@@ -21,26 +21,40 @@ function administrator(array $attributes = []): User
     ]);
 }
 
-test('the admin profile page renders inside the adminlte dashboard', function () {
+test('the profile page renders in the shared AdminLTE shell for both roles', function () {
     $admin = administrator();
 
     $this->actingAs($admin)
         ->get(route('profile.edit'))
         ->assertOk()
-        ->assertSee('class="skip-links"', false)
         ->assertSee('Administrator Information')
         // The Breeze/Tailwind wrapper was what made the admin profile look fake.
-        ->assertDontSee('min-h-screen bg-gray-100', false);
+        ->assertDontSee('min-h-screen bg-gray-100', false)
+        ->assertSee('id="adminlte-sidebar-menu"', false)
+        ->assertSee('class="app-sidebar bg-body-secondary shadow"', false)
+        ->assertDontSee('id="mainNavbar"', false)
+        ->assertDontSee('id="jsp-footer-main"', false);
 });
 
-test('every section of the profile page is an adminlte card not a tailwind stub', function () {
+test('the profile page keeps the customer sidebar narrowed for a normal user', function () {
+    $user = User::factory()->create(['is_admin' => false]);
+
+    $this->actingAs($user)
+        ->get(route('profile.edit'))
+        ->assertOk()
+        ->assertSee('id="adminlte-sidebar-menu"', false)
+        ->assertDontSee(route('admin.dashboard'), false);
+});
+
+test('every section of the profile page is a real card not a tailwind stub', function () {
     $admin = administrator();
 
     $page = $this->actingAs($admin)->get(route('profile.edit'));
 
     $page->assertOk()
-        // AdminLTE card chrome for the three sections.
-        ->assertSee('class="card card-primary card-outline mb-4"', false)
+        // Card chrome for the three sections.
+        ->assertSee('class="card shadow-sm mb-4"', false)
+        ->assertSee('Personal Information')
         ->assertSee('Update Password')
         ->assertSee('Delete Account')
         // Breeze/Tailwind residue that the fake admin profile used to render.

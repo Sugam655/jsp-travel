@@ -33,7 +33,7 @@ class VerifyEmailController extends Controller
     {
         return redirect()->intended(
             $request->user()->isAdmin()
-                ? route('dashboard', absolute: false).'?verified=1'
+                ? route('admin.dashboard', absolute: false).'?verified=1'
                 : route('user.dashboard', absolute: false).'?verified=1'
         );
     }

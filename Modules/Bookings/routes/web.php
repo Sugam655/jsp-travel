@@ -63,20 +63,50 @@ Route::middleware(['auth', 'verified', 'admin'])
             ->name('bookings.settings.update');
     });
 
+// The booking request form is a public page: a visitor can open it straight
+// from any "Book Now" link, review availability and the price summary, and is
+// only asked to sign in when they actually submit the request below.
+//
+// It deliberately does not carry the frontend.guest middleware the browsing
+// pages use. A guest who submits is bounced to login and returned to this exact
+// page, so signing out here would sign them straight back out and the request
+// could never be completed. The same is true of the live quote preview, which a
+// signed-in customer hits on every keystroke while filling the form in.
+Route::prefix('bookings')
+    ->name('bookings.')
+    ->group(function () {
+        Route::get('create', [FrontendBookingController::class, 'create'])
+            ->name('create');
+        // Read-only availability/price preview that powers the form's live
+        // summary. It creates nothing, so it stays public alongside the form, but
+        // it does run the full pricing and availability path on every keystroke.
+        Route::post('quote', [FrontendBookingController::class, 'quote'])
+            ->middleware('throttle:60,1')
+            ->name('quote');
+    });
+
+// Creating a booking requires an account, but a guest fills in the whole form
+// before being asked to sign in. booking.draft runs before auth so their answers
+// survive the redirect to the login page and are restored by bookings.create.
+Route::prefix('bookings')
+    ->name('bookings.')
+    ->group(function () {
+        Route::post('/', [FrontendBookingController::class, 'store'])
+            ->middleware(['booking.draft', 'auth'])
+            ->name('store');
+    });
+
 Route::middleware('auth')->group(function () {
     Route::prefix('bookings')
         ->name('bookings.')
         ->group(function () {
-            Route::get('create', [FrontendBookingController::class, 'create'])
-                ->name('create');
-            Route::post('quote', [FrontendBookingController::class, 'quote'])
-                ->name('quote');
-            Route::post('/', [FrontendBookingController::class, 'store'])
-                ->name('store');
-
             Route::get('my', [FrontendBookingController::class, 'my'])
                 ->name('my');
+            // Booking references are sequential, so this endpoint is the one
+            // place a visitor proves ownership by reference + email. Throttling it
+            // is what stops that being used to enumerate other people's bookings.
             Route::post('lookup', [FrontendBookingController::class, 'lookup'])
+                ->middleware('throttle:10,1')
                 ->name('lookup');
         });
 

@@ -5,9 +5,12 @@ namespace Modules\Home\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Modules\Home\Models\Concerns\ResolvesLegacyLink;
 
 class HomeHero extends Model
 {
+    use ResolvesLegacyLink;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -72,5 +75,13 @@ class HomeHero extends Model
     {
         return filled($this->background_image)
             && ! Str::startsWith($this->background_image, ['http://', 'https://', '//']);
+    }
+
+    /**
+     * The resolved call-to-action URL, translating legacy static links.
+     */
+    public function getButtonUrlAttribute(): string
+    {
+        return static::resolveLink($this->attributes['button_url'] ?? null);
     }
 }

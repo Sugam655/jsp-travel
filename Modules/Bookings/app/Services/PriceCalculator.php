@@ -48,12 +48,6 @@ class PriceCalculator
         );
 
         $subtotal = Money::mul($unitPrice, $quantity);
-        $taxRate = (float) BookingSetting::getWithDefault('tax_rate');
-        $serviceChargeRate = (float) BookingSetting::getWithDefault('service_charge_rate');
-        $taxAmount = Money::percent($subtotal, $taxRate);
-        $serviceCharge = Money::percent($subtotal, $serviceChargeRate);
-        $discount = '0.00';
-        $total = Money::add(Money::add($subtotal, $taxAmount), $serviceCharge);
 
         return [
             'currency' => $currency,
@@ -61,14 +55,52 @@ class PriceCalculator
             'unit_label' => $this->unitLabel($bookingType, $service),
             'quantity' => $quantity,
             'duration_label' => $durationLabel,
-            'subtotal' => $subtotal,
+            ...$this->priceSubtotal($subtotal, $currency),
+            'recalc_note' => $this->recalcNote($bookingType, $service, $quantity),
+        ];
+    }
+
+    /**
+     * Turn a subtotal into the final payable total.
+     *
+     * The order is fixed for every price the customer ever sees: discount
+     * first, then tax and service charge on what is left, so the total is
+     * always the arithmetic sum of the rows shown next to it.
+     *
+     * @return array<string, mixed>
+     */
+    public function priceSubtotal(string|int|float $subtotal, ?string $currency = null): array
+    {
+        $currency ??= (string) BookingSetting::getWithDefault('currency');
+        $subtotal = Money::round($subtotal);
+        $discount = DiscountResolver::settings();
+        $discounted = Money::compare($subtotal, '0') <= 0 ? '0.00' : $subtotal;
+        $applied = DiscountResolver::amountFor($discounted, $discount);
+
+        $discountedSubtotal = Money::sub($discounted, $applied);
+        $taxRate = (float) BookingSetting::getWithDefault('tax_rate');
+        $serviceChargeRate = (float) BookingSetting::getWithDefault('service_charge_rate');
+        $taxAmount = Money::percent($discountedSubtotal, $taxRate);
+        $serviceCharge = Money::percent($discountedSubtotal, $serviceChargeRate);
+        $total = Money::add(Money::add($discountedSubtotal, $taxAmount), $serviceCharge);
+        $wasApplied = Money::compare($applied, '0') > 0;
+
+        return [
+            'subtotal' => $discounted,
+            'discount' => $wasApplied ? $applied : '0.00',
+            'discount_type' => $wasApplied ? $discount['type'] : null,
+            'discount_value' => $wasApplied ? $discount['value'] : null,
+            'discount_label' => $wasApplied ? $discount['label'] : null,
+            'discount_applied' => $wasApplied,
+            'discount_description' => $wasApplied
+                ? DiscountResolver::describe($discount['type'], $discount['value'], $discount['label'], $currency)
+                : null,
+            'discounted_subtotal' => $discountedSubtotal,
             'tax_rate' => $taxRate,
             'service_charge_rate' => $serviceChargeRate,
             'tax_amount' => $taxAmount,
             'service_charge' => $serviceCharge,
-            'discount' => $discount,
             'total' => $total,
-            'recalc_note' => $this->recalcNote($bookingType, $service, $quantity),
         ];
     }
 
@@ -94,7 +126,11 @@ class PriceCalculator
 
             return match ($service->price_unit ?? 'per_day') {
                 'per_trip' => [1, 'Per trip'],
-                'per_hour' => [max(1, $days), $days.' day(s)'],
+                // Hourly and "contact us" vehicles have no quantity the booking
+                // form can express, so they are quoted at zero and left for an
+                // admin to set via the set-price action. Billing them as days
+                // would fabricate a total nobody agreed to.
+                'per_hour', 'contact' => [0, 'To be quoted'],
                 default => [$days, $days.' day(s)'],
             };
         }
@@ -121,11 +157,11 @@ class PriceCalculator
      */
     protected function recalcNote(string $bookingType, mixed $service, int $quantity): string
     {
-        return match ($bookingType) {
-            'hotel' => $quantity.' night(s) × room rate',
-            'vehicle' => isset($service->price_unit) && $service->price_unit === 'per_trip'
-                ? 'Flat trip rate'
-                : $quantity.' day(s) × rental rate',
+        return match (true) {
+            $bookingType === 'hotel' => $quantity.' night(s) × room rate',
+            $bookingType === 'vehicle' && in_array($service->price_unit ?? 'per_day', ['per_hour', 'contact'], true) => 'Quoted by our team',
+            $bookingType === 'vehicle' && ($service->price_unit ?? null) === 'per_trip' => 'Flat trip rate',
+            $bookingType === 'vehicle' => $quantity.' day(s) × rental rate',
             default => $quantity.' traveller(s) × per-person rate',
         };
     }
@@ -143,13 +179,7 @@ class PriceCalculator
             'unit_label' => '',
             'quantity' => 0,
             'duration_label' => '',
-            'subtotal' => '0.00',
-            'tax_rate' => (float) BookingSetting::getWithDefault('tax_rate'),
-            'service_charge_rate' => (float) BookingSetting::getWithDefault('service_charge_rate'),
-            'tax_amount' => '0.00',
-            'service_charge' => '0.00',
-            'discount' => '0.00',
-            'total' => '0.00',
+            ...$this->priceSubtotal('0.00'),
             'recalc_note' => '',
         ];
     }

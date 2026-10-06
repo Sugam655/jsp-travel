@@ -424,7 +424,7 @@
                     @if ($recentBookings->isEmpty())
                         <div class="text-center text-muted py-5">
                             No bookings available yet.
-                            <a href="{{ route('bookings.create') }}" class="d-block mt-2">Go to the booking page</a>
+                            <a href="{{ route('admin.bookings.index') }}" class="d-block mt-2">Go to the booking page</a>
                         </div>
                     @else
                         <div class="table-responsive">

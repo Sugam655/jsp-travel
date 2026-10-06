@@ -251,7 +251,7 @@ test('a booking snapshots the advance amount and due date from the payment rules
         ->and((float) $booking->dueAmount())->toBe((float) round((float) $booking->total_amount, 2));
 });
 
-test('a new booking redirects to its payment summary before admin confirmation', function () {
+test('a new booking lands on its own confirmation, which opens the payment summary', function () {
     $user = User::factory()->create();
     $vehicle = TransportVehicle::query()->first();
 
@@ -260,7 +260,14 @@ test('a new booking redirects to its payment summary before admin confirmation',
 
     $booking = Booking::query()->where('user_id', $user->id)->firstOrFail();
 
-    $response->assertRedirect(route('bookings.payment', $booking->booking_reference));
+    $response->assertRedirect(route('bookings.show', $booking->booking_reference));
+
+    // The confirmation states the booking, and payment is started from there.
+    $this->actingAs($user)
+        ->get(route('bookings.show', $booking->booking_reference))
+        ->assertOk()
+        ->assertSee($booking->booking_reference)
+        ->assertSee(route('bookings.payment', $booking->booking_reference), false);
 
     $this->actingAs($user)
         ->get(route('bookings.payment', $booking->booking_reference))
@@ -653,6 +660,44 @@ test('the booking page reads the outstanding balance from the database on every 
         ->get(route('admin.bookings.show', $booking))
         ->assertOk()
         ->assertSee($booking->booking_reference);
+});
+
+test('the admin booking payment ledger names the staff member who recorded and verified each payment', function () {
+    $user = User::factory()->create();
+    $admin = User::factory()->create(['is_admin' => true, 'name' => 'Ledger Officer']);
+    $booking = paymentReadyBooking($user, $admin);
+    $due = (string) round($booking->dueAmount(), 2);
+
+    $this->actingAs($user)
+        ->post('/bookings/'.$booking->booking_reference.'/payment/notify', [
+            'method' => 'bank_transfer',
+            'reference' => 'TRX-LEDGER-1',
+            'amount' => $due,
+        ])->assertRedirect();
+
+    $payment = $booking->payments()->sole();
+
+    // Before verification the ledger shows the recorder and an explicit gap.
+    $this->actingAs($admin)
+        ->get(route('admin.bookings.show', $booking))
+        ->assertOk()
+        ->assertSee('Payment Ledger')
+        ->assertSee('Recorded / Verified')
+        ->assertSee('TRX-LEDGER-1')
+        ->assertSee('Recorded by')
+        ->assertSee($user->name)
+        ->assertSee('Not verified');
+
+    $this->actingAs($admin)
+        ->post('/admin/payments/'.$payment->id.'/verify')
+        ->assertRedirect();
+
+    $this->actingAs($admin)
+        ->get(route('admin.bookings.show', $booking))
+        ->assertOk()
+        ->assertSee('Verified by')
+        ->assertSee('Ledger Officer')
+        ->assertDontSee('Not verified');
 });
 
 test('the customer payment detail page offers pay remaining and the same totals as the booking page', function () {
@@ -1082,7 +1127,7 @@ test('the customer payment history only lists their own bookings payments', func
     $this->actingAs($intruder)
         ->get('/payments')
         ->assertOk()
-        ->assertSee('No payments found', false)
+        ->assertSee("You don't have any payments yet.", false)
         ->assertDontSee($ownerBooking->booking_reference);
 });
 

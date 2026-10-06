@@ -1,5 +1,5 @@
 <section>
-    <div class="card card-danger card-outline">
+    <div class="card shadow-sm">
         <div class="card-header">
             <h3 class="card-title">{{ __('Delete Account') }}</h3>
             <p class="card-text small text-muted mb-0 mt-1">

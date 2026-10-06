@@ -54,16 +54,21 @@
                         <div class="col-lg-2 col-md-6">
                             <h5 class="jsp-footer-heading">Quick Links</h5>
                             <ul class="list-unstyled">
-                                <li><a href="index.html" class="jsp-footer-link" id="jsp-ftr-link-home"><i
-                                            class="bi bi-chevron-right"></i> Dashboard</a></li>
-                                <li><a href="about.html" class="jsp-footer-link" id="jsp-ftr-link-about"><i
+                                <li>
+                                    <a href="{{ auth()->check() ? (auth()->user()->isAdmin() ? route('admin.dashboard') : route('user.dashboard')) : route('home') }}"
+                                        class="jsp-footer-link" id="jsp-ftr-link-home"><i
+                                            class="bi bi-chevron-right"></i> Dashboard</a>
+                                </li>
+                                <li><a href="{{ route('about') }}" class="jsp-footer-link" id="jsp-ftr-link-about"><i
                                             class="bi bi-chevron-right"></i> About Us</a></li>
-                                <li><a href="#" class="jsp-footer-link" id="jsp-ftr-link-services"><i
+                                <li><a href="{{ route('destinations.index') }}" class="jsp-footer-link"
+                                        id="jsp-ftr-link-services"><i
                                             class="bi bi-chevron-right"></i> Our Services</a></li>
-                                <li><a href="transport .html" class="jsp-footer-link" id="jsp-ftr-link-vehicles"><i
+                                <li><a href="{{ route('transport') }}" class="jsp-footer-link"
+                                        id="jsp-ftr-link-vehicles"><i
                                             class="bi bi-chevron-right"></i> Vehicles</a></li>
-                                <li><a href="#" class="jsp-footer-link" id="jsp-ftr-link-gallery"><i
-                                            class="bi bi-chevron-right"></i> Gallery</a></li>
+                                <li><a href="{{ route('hotel') }}" class="jsp-footer-link" id="jsp-ftr-link-gallery"><i
+                                            class="bi bi-chevron-right"></i> Hotels</a></li>
                                 <li><a href="{{ route('contact.index') }}" class="jsp-footer-link" id="jsp-ftr-link-contact"><i
                                             class="bi bi-chevron-right"></i> Contact Us</a></li>
                             </ul>
@@ -73,13 +78,23 @@
                         <div class="col-lg-3 col-md-6">
                             <h5 class="jsp-footer-heading">Our Services</h5>
                             <div>
-                                <a href="#" class="jsp-service-tag" id="jsp-ftr-srv-package">📦 Package Tour</a>
-                                <a href="#" class="jsp-service-tag" id="jsp-ftr-srv-hotel">🏨 Hotel Booking</a>
-                                <a href="#" class="jsp-service-tag" id="jsp-ftr-srv-bus">🚌 Bus Ticket</a>
-                                <a href="#" class="jsp-service-tag" id="jsp-ftr-srv-vehicle">🚙 Vehicle Rent</a>
-                                <a href="#" class="jsp-service-tag" id="jsp-ftr-srv-courier">✈️ Airport Pickup</a>
-                                <a href="#" class="jsp-service-tag" id="jsp-ftr-srv-wedding">💒 Wedding Car</a>
-                                <a href="#" class="jsp-service-tag" id="jsp-ftr-srv-airticket">🎫 Air Ticket</a>
+                                <a href="{{ route('tours.index') }}" class="jsp-service-tag"
+                                    id="jsp-ftr-srv-package">📦 Package Tour</a>
+                                <a href="{{ route('hotel') }}" class="jsp-service-tag"
+                                    id="jsp-ftr-srv-hotel">🏨 Hotel Booking</a>
+                                <a href="{{ route('booking.search') }}" class="jsp-service-tag"
+                                    id="jsp-ftr-srv-bus">🚌 Bus Ticket</a>
+                                <a href="{{ route('transport') }}" class="jsp-service-tag"
+                                    id="jsp-ftr-srv-vehicle">🚙 Vehicle Rent</a>
+                                <a href="{{ route('transport') }}" class="jsp-service-tag"
+                                    id="jsp-ftr-srv-courier">✈️ Airport Pickup</a>
+                                {{-- The booking form only accepts a type + slug pair (BookingController::create),
+                                     so a slug-less vehicle link 404s. Send the customer to the vehicle
+                                     listing to pick a car, matching the other service tags above. --}}
+                                <a href="{{ route('transport') }}" class="jsp-service-tag"
+                                    id="jsp-ftr-srv-wedding">💒 Wedding Car</a>
+                                <a href="{{ route('booking.search') }}" class="jsp-service-tag"
+                                    id="jsp-ftr-srv-airticket">🎫 Air Ticket</a>
                             </div>
 
                             <h5 class="jsp-footer-heading mt-4">Location</h5>
@@ -168,7 +183,8 @@
                     <div class="row align-items-center">
                         <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
                             <p class="jsp-copyright-text mb-0">
-                                &copy; 2026 <a href="#" class="jsp-copyright-link">Jay Shiv Parvati Travel & Tour</a>.
+                                &copy; {{ date('Y') }} <a href="{{ route('about') }}"
+                                    class="jsp-copyright-link">Jay Shiv Parvati Travel & Tour</a>.
                                 All Rights Reserved.
                             </p>
                         </div>
@@ -192,7 +208,10 @@
     </section>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ asset('script.js') }}"></script>
+    {{-- script.js is served straight out of public/, so its URL has to change whenever
+         the file does. Left unversioned, a browser keeps running the copy it cached and a
+         rebuilt popup looks like it "did nothing". --}}
+    <script src="{{ asset('script.js') }}?v={{ @filemtime(public_path('script.js')) ?: 1 }}"></script>
 </body>
 
 </html>

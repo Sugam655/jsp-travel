@@ -4,6 +4,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Modules\Bookings\Models\Booking;
+use Modules\Bookings\Models\Payment;
 
 beforeEach(function () {
     Artisan::call('module:migrate', ['module' => 'Bookings', '--force' => true]);
@@ -93,7 +94,7 @@ test('a newly registered user automatically appears in user management', functio
         'email' => 'fresh@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
-    ])->assertRedirect('/my-account');
+    ])->assertRedirect('/user/dashboard');
 
     $this->actingAs($admin)
         ->get('/admin/users')
@@ -215,6 +216,86 @@ test('the user view page states when an account has no bookings', function () {
         ->get(route('admin.users.show', $customer))
         ->assertOk()
         ->assertSee('This user has no bookings yet');
+});
+
+test('the user view page summarises the account payments with the verifying staff member', function () {
+    $admin = User::factory()->create(['is_admin' => true, 'name' => 'Verifying Officer']);
+    $customer = managedCustomer();
+
+    $booking = Booking::create([
+        'user_id' => $customer->id,
+        'booking_type' => 'tour',
+        'service_title' => 'Everest Base Camp Trek',
+        'booking_reference' => 'JSP-PAY-001',
+        'name' => $customer->name,
+        'email' => $customer->email,
+        'status' => 'confirmed',
+    ]);
+
+    $payment = Payment::create([
+        'booking_id' => $booking->id,
+        'user_id' => $customer->id,
+        'amount' => 5000,
+        'method' => 'bank_transfer',
+        'type' => 'advance',
+        'reference' => 'USER-PAGE-REF',
+        'status' => 'paid',
+        'recorded_by' => $customer->id,
+        'verified_by' => $admin->id,
+        'verified_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.show', $customer))
+        ->assertOk()
+        ->assertSee('Recent Payments')
+        ->assertSee('1 payment recorded against')
+        ->assertSee('USER-PAGE-REF')
+        ->assertSee('Verifying Officer')
+        ->assertSee(route('admin.payments.show', $payment), false);
+});
+
+test('the user view page states when an account has no payments', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $customer = managedCustomer();
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.show', $customer))
+        ->assertOk()
+        ->assertSee('This user has no payments yet');
+});
+
+test('the user view page never lists another account payments', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $customer = managedCustomer();
+    $other = managedCustomer();
+
+    $otherBooking = Booking::create([
+        'user_id' => $other->id,
+        'booking_type' => 'tour',
+        'service_title' => 'Annapurna Circuit',
+        'booking_reference' => 'JSP-OTHER-001',
+        'name' => $other->name,
+        'email' => $other->email,
+        'status' => 'confirmed',
+    ]);
+
+    Payment::create([
+        'booking_id' => $otherBooking->id,
+        'user_id' => $other->id,
+        'amount' => 7500,
+        'method' => 'cash',
+        'type' => 'advance',
+        'reference' => 'OTHER-ACCOUNT-REF',
+        'status' => 'paid',
+        'recorded_by' => $other->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.users.show', $customer))
+        ->assertOk()
+        ->assertDontSee('OTHER-ACCOUNT-REF')
+        ->assertDontSee('JSP-OTHER-001');
 });
 
 test('the user view page contains no writable form controls', function () {

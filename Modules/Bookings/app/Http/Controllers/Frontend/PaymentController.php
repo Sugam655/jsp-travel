@@ -48,7 +48,7 @@ class PaymentController extends Controller
                 ->whereIn('booking_id', $ownedPaymentBookingIds)
                 ->sum('amount');
 
-        return view('bookings::frontend.payments.index', [
+        return view('bookings::user.payments.index', [
             'payments' => $payments,
             'recordCount' => (int) Payment::query()->where($owned)->count(),
             'pendingCount' => (int) Payment::query()->where($owned)->where('status', 'pending')->count(),
@@ -70,7 +70,7 @@ class PaymentController extends Controller
 
         abort_unless($booking !== null, 404, 'This payment is no longer linked to a booking.');
 
-        return view('bookings::frontend.payments.show', [
+        return view('bookings::user.payments.show', [
             'payment' => $payment,
             'booking' => $booking,
             // Recalculated from the ledger on every request, never from a value

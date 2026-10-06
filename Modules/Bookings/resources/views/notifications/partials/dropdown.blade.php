@@ -6,14 +6,18 @@
     @php
         $data = is_array($notification->data) ? $notification->data : [];
         $url = $data['url'] ?? null;
-        $href = $notification->read_at === null && $url
+        $unread = $notification->read_at === null;
+        $href = $unread && $url
             ? route('notifications.read', $notification->getKey())
             : ($url ?: '#');
     @endphp
     <a href="{{ $href }}"
-        class="dropdown-item {{ $notification->read_at === null ? 'bg-body-tertiary' : '' }}">
-        <i class="fa-solid {{ $notification->read_at === null ? 'fa-circle text-primary' : 'fa-circle text-body-tertiary' }} me-2"></i>
+        class="dropdown-item {{ $unread ? 'bg-body-tertiary' : '' }}">
+        <i class="fa-solid {{ \Modules\Bookings\Notifications\BookingNotification::iconFor($data) }} {{ $unread ? 'text-primary' : 'text-body-tertiary' }} me-2"></i>
         <strong>{{ $data['title'] ?? 'Notification' }}</strong>
+        @if ($unread)
+            <span class="badge text-bg-danger rounded-pill ms-1">New</span>
+        @endif
         <span class="d-block text-truncate text-muted">{{ $data['message'] ?? '' }}</span>
         <small class="text-muted">{{ $notification->created_at->diffForHumans() }}</small>
     </a>

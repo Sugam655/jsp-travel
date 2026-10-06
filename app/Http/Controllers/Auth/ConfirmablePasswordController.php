@@ -38,7 +38,7 @@ class ConfirmablePasswordController extends Controller
         $user = $request->user();
 
         return redirect()->intended(
-            $user->isAdmin() ? route('dashboard', absolute: false) : route('user.dashboard', absolute: false)
+            $user->isAdmin() ? route('admin.dashboard', absolute: false) : route('user.dashboard', absolute: false)
         );
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\View\View;
 use Modules\Bookings\Models\Booking;
+use Modules\Bookings\Models\Payment;
 
 class UserManagementController extends Controller
 {
@@ -74,11 +75,22 @@ class UserManagementController extends Controller
      */
     public function show(User $user): View
     {
+        $ownedPayments = fn ($query) => $query
+            ->where('payments.user_id', $user->getKey())
+            ->orWhereHas('booking', fn ($bookingQuery) => $bookingQuery->where('user_id', $user->getKey()));
+
         return view('admin.users.show', [
             'user' => $user,
             'bookingCount' => Booking::query()->where('user_id', $user->getKey())->count(),
             'latestBookings' => Booking::query()
                 ->where('user_id', $user->getKey())
+                ->latest('id')
+                ->limit(5)
+                ->get(),
+            'paymentCount' => Payment::query()->where($ownedPayments)->count(),
+            'latestPayments' => Payment::query()
+                ->with(['booking', 'verifier'])
+                ->where($ownedPayments)
                 ->latest('id')
                 ->limit(5)
                 ->get(),

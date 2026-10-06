@@ -198,7 +198,11 @@ return [
     */
 
     'use_route_url' => false,
-    'dashboard_url' => 'my-account',
+
+    // Default only. App\Listeners\ConfigureAdminLteMenu overwrites this per
+    // request so the brand logo points at the dashboard of the signed-in role.
+
+    'dashboard_url' => '/',
     'logout_url' => 'logout',
 
     // The HTTP method spoofed on the logout form. Set it to 'GET' when your
@@ -814,115 +818,15 @@ return [
 
         [
             'text' => 'Dashboard',
-            'url' => 'dashboard',
+            'url' => 'admin/dashboard',
             'icon' => 'fas fa-tachometer-alt',
             'key' => 'admin_dashboard',
         ],
 
-        // Academic
+        // Booking Management
         [
-            'header' => 'Dashboard',
-            'key' => 'header_dash',
-        ],
-
-        [
-            'text' => 'About',
-            'icon' => 'fas fa-chalkboard-teacher',
-            'key' => 'admin_about',
-
-        ],
-
-        // Website Management
-        [
-            'header' => 'WEBSITE MANAGEMENT',
-            'key' => 'header_website_mgmt',
-        ],
-
-        [
-            'text' => 'Home',
-            'icon' => 'fas fa-home',
-            'key' => 'admin_home',
-            'submenu' => [
-                [
-                    'text' => 'Home Settings',
-                    'route' => 'admin.home.index',
-                    'icon' => 'fas fa-sliders-h',
-                ],
-                [
-                    'text' => 'Popular Destinations',
-                    'route' => 'admin.home.destinations.index',
-                    'icon' => 'fas fa-map-marker-alt',
-                ],
-                [
-                    'text' => 'Why Choose Us',
-                    'route' => 'admin.home.why_choose_us.index',
-                    'icon' => 'fas fa-handshake',
-                ],
-                [
-                    'text' => 'Stories Worth Sharing',
-                    'route' => 'admin.home.stories.index',
-                    'icon' => 'fas fa-comment-dots',
-                ],
-                [
-                    'text' => 'Our Services',
-                    'route' => 'admin.home.services.index',
-                    'icon' => 'fas fa-concierge-bell',
-                ],
-            ],
-        ],
-
-        [
-            'text' => 'Tours',
-            'icon' => 'fas fa-route',
-            'key' => 'admin_tours',
-            'submenu' => [
-                [
-                    'text' => 'All Tours',
-                    'route' => 'admin.tours.index',
-                    'icon' => 'fas fa-list',
-                ],
-                [
-                    'text' => 'Add Tour',
-                    'route' => 'admin.tours.create',
-                    'icon' => 'fas fa-plus',
-                ],
-            ],
-        ],
-
-        [
-            'text' => 'Hotels',
-            'icon' => 'fas fa-hotel',
-            'key' => 'admin_hotels',
-            'submenu' => [
-                [
-                    'text' => 'All Hotels',
-                    'route' => 'admin.hotels.index',
-                    'icon' => 'fas fa-list',
-                ],
-                [
-                    'text' => 'Add Hotel',
-                    'route' => 'admin.hotels.create',
-                    'icon' => 'fas fa-plus',
-                ],
-            ],
-        ],
-
-        [
-            'text' => 'Transport',
-            'icon' => 'fas fa-car',
-            'key' => 'admin_transport',
-            'submenu' => [
-                [
-                    'text' => 'All Vehicles',
-                    'route' => 'admin.transport.index',
-                    'icon' => 'fas fa-list',
-                ],
-                [
-                    'text' => 'Add Vehicle',
-                    'route' => 'admin.transport.create',
-                    'icon' => 'fas fa-plus',
-                ],
-            ],
+            'header' => 'BOOKING MANAGEMENT',
+            'key' => 'header_booking_mgmt',
         ],
 
         [
@@ -936,66 +840,149 @@ return [
                     'icon' => 'fas fa-list',
                 ],
                 [
-                    'text' => 'Payments',
-                    'route' => 'admin.bookings.payments.index',
-                    'icon' => 'fas fa-money-bill-wave',
-                ],
-                [
                     'text' => 'Change Requests',
                     'route' => 'admin.bookings.change-requests.index',
                     'icon' => 'fas fa-arrows-rotate',
                 ],
+            ],
+        ],
+
+        [
+            'text' => 'Payments',
+            'route' => 'admin.bookings.payments.index',
+            'icon' => 'fas fa-money-bill-wave',
+            'key' => 'admin_payments',
+        ],
+
+        // Settings
+        [
+            'header' => 'SETTINGS',
+            'key' => 'header_settings',
+        ],
+
+        [
+            'text' => 'Settings',
+            'icon' => 'fas fa-cog',
+            'key' => 'admin_settings',
+            'submenu' => [
+                [
+                    'text' => 'Home',
+                    'icon' => 'fas fa-home',
+                    'key' => 'admin_home',
+                    'submenu' => [
+                        [
+                            'text' => 'Home Settings',
+                            'route' => 'admin.home.index',
+                            'icon' => 'fas fa-sliders-h',
+                        ],
+                        [
+                            'text' => 'Popular Destinations',
+                            'route' => 'admin.home.destinations.index',
+                            'icon' => 'fas fa-map-marker-alt',
+                        ],
+                        [
+                            'text' => 'Why Choose Us',
+                            'route' => 'admin.home.why_choose_us.index',
+                            'icon' => 'fas fa-handshake',
+                        ],
+                        [
+                            'text' => 'Stories Worth Sharing',
+                            'route' => 'admin.home.stories.index',
+                            'icon' => 'fas fa-comment-dots',
+                        ],
+                        [
+                            'text' => 'Our Services',
+                            'route' => 'admin.home.services.index',
+                            'icon' => 'fas fa-concierge-bell',
+                        ],
+                    ],
+                ],
+
+                [
+                    'text' => 'Tours',
+                    'icon' => 'fas fa-route',
+                    'key' => 'admin_tours',
+                    'submenu' => [
+                        [
+                            'text' => 'All Tours',
+                            'route' => 'admin.tours.index',
+                            'icon' => 'fas fa-list',
+                        ],
+                        [
+                            'text' => 'Add Tour',
+                            'route' => 'admin.tours.create',
+                            'icon' => 'fas fa-plus',
+                        ],
+                    ],
+                ],
+
+                [
+                    'text' => 'Hotels',
+                    'icon' => 'fas fa-hotel',
+                    'key' => 'admin_hotels',
+                    'submenu' => [
+                        [
+                            'text' => 'All Hotels',
+                            'route' => 'admin.hotels.index',
+                            'icon' => 'fas fa-list',
+                        ],
+                        [
+                            'text' => 'Add Hotel',
+                            'route' => 'admin.hotels.create',
+                            'icon' => 'fas fa-plus',
+                        ],
+                    ],
+                ],
+
+                [
+                    'text' => 'Transport',
+                    'icon' => 'fas fa-car',
+                    'key' => 'admin_transport',
+                    'submenu' => [
+                        [
+                            'text' => 'All Vehicles',
+                            'route' => 'admin.transport.index',
+                            'icon' => 'fas fa-list',
+                        ],
+                        [
+                            'text' => 'Add Vehicle',
+                            'route' => 'admin.transport.create',
+                            'icon' => 'fas fa-plus',
+                        ],
+                    ],
+                ],
+
+                [
+                    'text' => 'Contact',
+                    'icon' => 'fas fa-envelope',
+                    'key' => 'admin_contact',
+                    'submenu' => [
+                        [
+                            'text' => 'Contact Settings',
+                            'route' => 'admin.contact.index',
+                            'icon' => 'fas fa-sliders-h',
+                        ],
+                        [
+                            'text' => 'Messages',
+                            'route' => 'admin.contact.messages.index',
+                            'icon' => 'fas fa-inbox',
+                        ],
+                    ],
+                ],
+
+                [
+                    'text' => 'User Management',
+                    'route' => 'admin.users.index',
+                    'icon' => 'fas fa-users-cog',
+                    'key' => 'admin_user_management',
+                ],
+
                 [
                     'text' => 'Booking Settings',
                     'route' => 'admin.bookings.settings.index',
                     'icon' => 'fas fa-sliders-h',
                 ],
             ],
-        ],
-
-        [
-            'text' => 'Contact',
-            'icon' => 'fas fa-envelope',
-            'key' => 'admin_contact',
-            'submenu' => [
-                [
-                    'text' => 'Contact Settings',
-                    'route' => 'admin.contact.index',
-                    'icon' => 'fas fa-sliders-h',
-                ],
-                [
-                    'text' => 'Messages',
-                    'route' => 'admin.contact.messages.index',
-                    'icon' => 'fas fa-inbox',
-                ],
-            ],
-        ],
-
-        // System
-        [
-            'header' => 'SYSTEM',
-            'key' => 'header_system',
-        ],
-
-        [
-            'text' => 'User Management',
-            'route' => 'admin.users.index',
-            'icon' => 'fas fa-users-cog',
-            'key' => 'admin_user_management',
-        ],
-
-        [
-            'text' => 'Reports',
-            'url' => '#',
-            'icon' => 'fas fa-chart-bar',
-            'key' => 'admin_reports',
-        ],
-
-        [
-            'text' => 'Settings',
-            'url' => '#',
-            'icon' => 'fas fa-cog',
-            'key' => 'admin_settings',
         ],
 
     ],

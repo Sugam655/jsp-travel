@@ -38,6 +38,18 @@ class TourController extends Controller
 
         $tour->loadMissing('destination');
 
-        return view('frontend.tour', ['tour' => $tour]);
+        $relatedTours = Tour::query()
+            ->active()
+            ->whereKeyNot($tour->getKey())
+            ->orderByDesc('featured')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->limit(3)
+            ->get();
+
+        return view('frontend.tour-detail', [
+            'tour' => $tour,
+            'relatedTours' => $relatedTours,
+        ]);
     }
 }

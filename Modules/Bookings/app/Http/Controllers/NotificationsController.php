@@ -20,6 +20,13 @@ use Illuminate\View\View;
  */
 class NotificationsController extends Controller
 {
+    /**
+     * The notification centre.
+     *
+     * Administrators and customers both work inside the AdminLTE panel, so this
+     * is one view for both roles. The list itself is a shared partial so the
+     * shells can never drift apart.
+     */
     public function index(Request $request): View
     {
         $status = $request->query('status', 'all');

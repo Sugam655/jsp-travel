@@ -16,7 +16,8 @@
         $heroDescription = $hero?->description ?: $defaults['description'];
         $heroImage = $hero?->background_image_url ?: $defaults['background_image'];
         $heroButtonText = $hero?->button_text ?: $defaults['button_text'];
-        $heroButtonUrl = $hero?->button_url ?: $defaults['button_url'];
+        $heroButtonUrl = $hero?->button_url
+            ?: \Modules\Home\Models\HomeHero::resolveLink($defaults['button_url']);
 
         $wcuSmallTitle = $whyChooseUs?->small_title ?: $whyChooseUsDefaults['small_title'];
         $wcuTitle = $whyChooseUs?->title ?: $whyChooseUsDefaults['title'];

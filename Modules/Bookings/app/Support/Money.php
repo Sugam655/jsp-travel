@@ -85,6 +85,18 @@ class Money
     }
 
     /**
+     * Compare two amounts: -1 when $a is lower, 0 when equal, 1 when higher.
+     */
+    public static function compare(string|int|float $a, string|int|float $b): int
+    {
+        if (function_exists('bccomp')) {
+            return bccomp(self::normalise($a), self::normalise($b), self::SCALE);
+        }
+
+        return (float) $a <=> (float) $b;
+    }
+
+    /**
      * Normalise a numeric input into a plain decimal string.
      */
     protected static function normalise(string|int|float $value): string

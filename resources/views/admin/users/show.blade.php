@@ -100,11 +100,73 @@
                                 <tbody>
                                     @foreach ($latestBookings as $booking)
                                         <tr>
-                                            <td>{{ $booking->booking_reference }}</td>
+                                            <td>
+                                                <a href="{{ route('admin.bookings.show', $booking) }}">
+                                                    {{ $booking->booking_reference }}
+                                                </a>
+                                            </td>
                                             <td>{{ $booking->service_title }}</td>
                                             <td>{{ \Illuminate\Support\Str::headline($booking->booking_type) }}</td>
                                             <td>{{ \Illuminate\Support\Str::headline($booking->status) }}</td>
                                             <td class="text-end">{{ number_format((float) $booking->total_amount, 2) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="card card-secondary card-outline mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Payments</h3>
+                    <p class="card-text small text-muted mb-0 mt-1">
+                        {{ $paymentCount }} {{ Str::plural('payment', $paymentCount) }} recorded against
+                        this account.
+                    </p>
+                </div>
+                <div class="card-body p-0">
+                    @if ($latestPayments->isEmpty())
+                        <p class="text-muted mb-0 p-3">This user has no payments yet.</p>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Booking</th>
+                                        <th>Method</th>
+                                        <th>Type</th>
+                                        <th>Reference</th>
+                                        <th class="text-end">Amount</th>
+                                        <th>Status</th>
+                                        <th>Verified By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($latestPayments as $payment)
+                                        <tr>
+                                            <td>{{ $payment->created_at->format('M d, Y') }}</td>
+                                            <td>
+                                                @if ($payment->booking)
+                                                    <a href="{{ route('admin.bookings.show', $payment->booking) }}">
+                                                        {{ $payment->booking->booking_reference }}
+                                                    </a>
+                                                @else
+                                                    &mdash;
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <a href="{{ route('admin.payments.show', $payment) }}">
+                                                    {{ ucwords(str_replace('_', ' ', $payment->method ?? 'manual')) }}
+                                                </a>
+                                            </td>
+                                            <td><span class="badge {{ $payment->type_color }}">{{ $payment->type_label }}</span></td>
+                                            <td>{!! $payment->reference ? e($payment->reference) : '&mdash;' !!}</td>
+                                            <td class="text-end">{{ $payment->amount_display }}</td>
+                                            <td><span class="badge {{ $payment->status_color }}">{{ $payment->status_label }}</span></td>
+                                            <td>{{ $payment->verifier?->name ?? '—' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

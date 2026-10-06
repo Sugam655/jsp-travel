@@ -20,42 +20,34 @@
         <div class="navbar-inner">
 
             <!-- Logo -->
-            <a href="index.html" class="nav-logo" aria-label="JSP Travel Dashboard">
-                <img src="uploads/ChatGPT Image Sep 2, 2026, 03_55_54 PM.png" alt="JSP Travel Logo">
+            <a href="{{ route('home') }}" class="nav-logo" aria-label="JSP Travel home">
+                <svg class="nav-logo-mark" viewBox="0 0 150 58" role="img" aria-label="JSP Travel">
+                    <text x="0" y="34" fill="#d8a13b" font-family="'Playfair Display', serif" font-size="32"
+                        font-weight="700" letter-spacing="1">JSP</text>
+                    <text x="2" y="50" fill="#013274" font-family="'Poppins', sans-serif" font-size="10"
+                        font-weight="500" letter-spacing="4">TRAVEL</text>
+                </svg>
             </a>
 
             <!-- Desktop Navigation -->
             <ul class="nav-links">
                 <li><a href="{{route('home')}}">Home</a></li>
                <li><a href="{{ route('about') }}">About</a></li>
-                <li><a href="{{ route('destinations.index') }}">Tours</a></li>
+                <li><a href="{{ route('tours.index') }}">Tours</a></li>
                 <li><a href="{{ route('hotel') }}">Hotels</a></li>
                 <li><a href="{{ route('transport') }}">Car Rental</a></li>
                 <li><a href="{{ route('contact.index') }}">Contact</a></li>
+                {{-- The public site is browsed as a guest (frontend.guest signs
+                     visitors out), so the account entry is the same navbar link as
+                     the others and never the panel dashboard or a logout form. --}}
+                <li><a href="{{ route('login') }}">Login</a></li>
             </ul>
 
             <!-- Desktop Button -->
-            <a href="{{ route('bookings.create') }}" class="nav-cta desktop">
+            <a href="{{ route('booking.search') }}" class="nav-cta desktop">
                 <span>Book Now</span>
                 <i class="fas fa-arrow-right" aria-hidden="true"></i>
             </a>
-
-            <!-- Desktop Account -->
-            <div class="nav-auth">
-                @auth
-                    @if (auth()->user()->isAdmin())
-                        <a href="{{ route('dashboard') }}">Admin Dashboard</a>
-                    @else
-                        <a href="{{ route('user.dashboard') }}">My Dashboard</a>
-                    @endif
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="nav-auth-logout" aria-label="Logout">Logout</button>
-                    </form>
-                @else
-                    <a href="{{ route('login') }}">Login</a>
-                @endauth
-            </div>
 
             <!-- Mobile Toggle -->
             <button type="button" class="nav-toggle" id="navToggle" aria-label="Toggle navigation menu"
